@@ -42,7 +42,7 @@ const PaymentMethod: React.FC = () => {
 
   const cardDigitsCount = useMemo(() => digitsOnly(cardNumber).length, [cardNumber]);
   const onChangeCardNumber = (val: string) => setCardNumber(formatCard(val));
-  const onChangeCVV = (val: string) => setCvv(digitsOnly(val).slice(0, 3));
+  const onChangeCVV = (val: string) => setCvv(digitsOnly(val).slice(0, 4));
 
 
 
