@@ -7,7 +7,7 @@ import React, {
   useState,
   useEffect,
 } from "react";
-import { toast } from "react-toastify";
+// import { toast } from "react-toastify";
 import type { Referral } from "../components/ReferralRow";
 
 type Ctx = {
@@ -19,6 +19,7 @@ type Ctx = {
 
 const ReferralContext = createContext<Ctx | null>(null);
 
+
 export const useReferralContext = () => {
   const ctx = useContext(ReferralContext);
   if (!ctx) throw new Error("useReferralContext must be used inside provider");
@@ -26,6 +27,7 @@ export const useReferralContext = () => {
 };
 
 const serverUrl = import.meta.env.VITE_SERVER_URL;
+
 
 export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -53,7 +55,6 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({
         const errTxt = await res.text();
         const msg = `Error ${res.status}: ${errTxt || res.statusText}`;
         setError(msg);
-        toast.error(msg);
         setReferrals([]);
         return;
       }
@@ -77,7 +78,6 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({
       console.error("[referrals_list] network error:", err);
       const msg = err?.message || "Network error";
       setError(msg);
-      toast.error(msg);
       setReferrals([]);
     } finally {
       setLoading(false);

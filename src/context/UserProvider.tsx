@@ -78,8 +78,21 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
         return;
       }
 
-      const DEFAULT_AVATAR =
-        "https://ui-avatars.com/api/?name=User&background=E5E7EB&color=374151";
+    // Function to generate initials from name
+const makeAvatarUrl = (fullName: string) => {
+  const parts = fullName.trim().split(" ");
+  let initials = "";
+  if (parts.length >= 2) {
+    initials = `${parts[0][0]}${parts[1][0]}`; // first letters of first + last
+  } else if (parts.length === 1) {
+    initials = parts[0][0]; // just first letter
+  } else {
+    initials = "U"; // fallback
+  }
+
+  return `https://ui-avatars.com/api/?name=${initials.toUpperCase()}&background=E5E7EB&color=374151`;
+};
+
 
       // ✅ Merge user + business_info
       const mapped: UserInfo = {
@@ -88,7 +101,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
         email: data?.user?.email || "",
         phone: data?.user?.phone || "",
         role: data?.user?.role || "Member",
-        avatar: data?.user?.image || DEFAULT_AVATAR,
+       avatar: data?.user?.image || makeAvatarUrl(data?.user?.full_name),
+
 
         company_name: data?.business_info?.company_name || "",
         address1: data?.business_info?.address1 || "",

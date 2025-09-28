@@ -6,7 +6,7 @@ import React, {
   useState,
   useEffect,
 } from "react";
-import { toast } from "react-toastify";
+// import { toast } from "react-toastify";
 
 
 export type TeamMember = {
@@ -69,7 +69,6 @@ export const TeamMembersProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!res.ok) {
         const errTxt = await res.text();
         const msg = `Failed (${res.status}) - ${errTxt || "Unknown error"}`;
-        toast.error(msg);
         setError(msg);
         setMembersFromApi([]);
         return;
@@ -95,7 +94,6 @@ export const TeamMembersProvider: React.FC<{ children: React.ReactNode }> = ({
       setMembersFromApi(mapped);
     } catch (err) {
       // console.error("[employee_list] network error:", err);
-      toast.error("Network error. Please try again.");
       setError("Network error");
       setMembersFromApi([]);
     } finally {

@@ -151,6 +151,7 @@ const PaymentMethod: React.FC = () => {
         });
 
         const data = await res.json();
+        console.log('Getting data from signup success', data);
 
         if (!res.ok) {
           const msg =
@@ -160,6 +161,11 @@ const PaymentMethod: React.FC = () => {
           return;
         }
 
+        if (data?.tokens?.access) {
+            localStorage.setItem("accessToken", data.tokens.access);
+          }
+
+
         toast.success("Signup successful!");
         setTimeout(() => {
           finishSignup({ clear: true });
@@ -167,8 +173,8 @@ const PaymentMethod: React.FC = () => {
           setCardNumber("");
           setExpMonthValue("");
           setCvv("");
-          navigate("/Login", { replace: true });
-        }, 2000);
+          navigate("/Dashboard", { replace: true });
+        }, 1000);
 
 
 
