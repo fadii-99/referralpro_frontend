@@ -2,7 +2,16 @@ import React, { createContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
 /** Domain types */
-export type BizType = "sole" | "partnership" | "nonprofit" | "corporation" | "llc" | "other" | "";
+export type BizType =
+  | "sole"
+  | "sole_proprietorship"
+  | "partnership"
+  | "nonprofit"
+  | "corporation"
+  | "llc"
+  | "other"
+  | "";
+
 export type ProfileType = "company" | "contractor" | "";
 export type Billing = "monthly" | "yearly";
 export type PlanId = 0 | 1 | 3 | null;

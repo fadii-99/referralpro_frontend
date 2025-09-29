@@ -97,7 +97,7 @@ const PaymentMethod: React.FC = () => {
         ...(isCompany ? { companyName: registrationData.companyName } : {}),
       },
       businessType: {
-        type: isCompany ? registrationData.bizType || "sole" : "sole",
+        type: isCompany ? registrationData.bizType : "sole",
         years: registrationData.years,
         employees: registrationData.employees,
         usState: registrationData.usState,
@@ -140,7 +140,7 @@ const PaymentMethod: React.FC = () => {
       },
     };
 
-    // console.log("🚀 Final Payload Sent to Backend:", payload);
+    console.log("🚀 Final Payload Sent to Backend:", payload);
 
     const fd = new FormData();
     fd.append("payload", JSON.stringify(payload));
@@ -165,6 +165,7 @@ const PaymentMethod: React.FC = () => {
             localStorage.setItem("accessToken", data.tokens.access);
           }
 
+          
 
         toast.success("Signup successful!");
         setTimeout(() => {
@@ -178,13 +179,13 @@ const PaymentMethod: React.FC = () => {
 
 
 
-  } catch (e) {
-    console.error(e);
-    toast.error("Something went wrong. Try again.");
-  } finally {
-    setSubmitting(false); // ✅ always reset
-  }
-};
+      } catch (e) {
+        console.error(e);
+        toast.error("Something went wrong. Try again.");
+      } finally {
+        setSubmitting(false);
+      }
+    };
 
 
 

@@ -1,4 +1,4 @@
-import{r as ot,g as Qs,j as pt}from"./index-JGuVgcOF.js";/*!
+import{r as ot,g as Qs,j as pt}from"./index-DTpFSV9c.js";/*!
  * @kurkle/color v0.3.4
  * https://github.com/kurkle/color#readme
  * (c) 2024 Jukka Kurkela

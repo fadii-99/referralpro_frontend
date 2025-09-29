@@ -52,7 +52,6 @@ const BusinessType: React.FC = () => {
 
   useEffect(() => {
     if (isContractor) {
-      // Contractor → hamesha sole lock
       setType("sole");
       setRegistrationData((prev) => ({ ...prev, bizType: "sole" }));
     } else {
@@ -65,7 +64,6 @@ const BusinessType: React.FC = () => {
     setEmployees(registrationData.employees);
     setUsState(registrationData.usState);
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
  const handleContinue: React.MouseEventHandler<HTMLButtonElement> = () => {
@@ -73,23 +71,28 @@ const BusinessType: React.FC = () => {
     toast.error("Please select a business type.");
     return;
   }
-
   if (!usState.trim()) {
     toast.error("Please select a state.");
     return;
   }
-
   if (!years.trim()) {
     toast.error("Please select years in business.");
     return;
   }
-
   if (!isContractor && !employees.trim()) {
     toast.error("Please select employee count.");
     return;
   }
 
-  const nextType: BizType = isContractor ? "sole" : type;
+  // ✅ Map logic
+  let nextType: BizType;
+  if (isContractor) {
+    nextType = "sole"; 
+  } else if (type === "sole") {
+    nextType = "sole_proprietorship";
+  } else {
+    nextType = type;
+  }
 
   setRegistrationData((prev) => ({
     ...prev,
@@ -99,9 +102,9 @@ const BusinessType: React.FC = () => {
     usState: usState?.trim() || "",
   }));
 
-
   navigate("/CompanyInformation");
 };
+
 
 
 

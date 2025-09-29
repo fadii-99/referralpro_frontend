@@ -33,8 +33,24 @@ const serverUrl = import.meta.env.VITE_SERVER_URL;
 
 // Employees options
 const EMPLOYEE_OPTIONS = ["1 – 50", "51 – 100", "100 – 500", "500+"];
-// BizType options
+// BizType options (UI labels)
 const BIZTYPE_OPTIONS = ["Sole Proprietorship", "Partnership", "Corporation", "LLC", "Nonprofit", "Other"];
+
+// ✅ UI label -> backend code
+const BIZTYPE_MAP: Record<string, string> = {
+  "Sole Proprietorship": "sole_proprietorship",
+  Partnership: "partnership",
+  Corporation: "corporation",
+  LLC: "llc",
+  Nonprofit: "nonprofit",
+  Other: "other",
+};
+
+// ✅ backend code -> UI label
+const BIZTYPE_REVERSE_MAP: Record<string, string> = Object.fromEntries(
+  Object.entries(BIZTYPE_MAP).map(([label, code]) => [code, label])
+);
+
 // US States
 const US_STATES = ["Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut","Delaware",
   "Florida","Georgia","Hawaii","Idaho","Illinois","Indiana","Iowa","Kansas","Kentucky",
@@ -125,7 +141,9 @@ const EditProfileModal: React.FC<Props> = ({ open, onClose }) => {
     setWebsite(user?.website || "");
     setIndustry(user?.industry || "");
     setEmployees(user?.employees || "");
-    setBizType(user?.biz_type || "");
+
+    // 🟣 Map backend biz_type -> UI label for dropdown display
+    setBizType(user?.biz_type ? (BIZTYPE_REVERSE_MAP[user.biz_type] || user.biz_type) : "");
 
     if (user?.phone) {
       const parsed = parsePhoneNumberFromString(user.phone);
@@ -152,21 +170,20 @@ const EditProfileModal: React.FC<Props> = ({ open, onClose }) => {
       return;
     }
 
-     const nameRegex = /^[A-Za-z ]+$/;
-  if (!nameRegex.test(name.trim())) {
-    toast.error("Full Name should only contain letters and spaces.");
-    return;
-  }
-
-  // ✅ Company Name validation (if entered)
-  if (companyName.trim()) {
-    const companyRegex = /^[A-Za-z ]+$/;
-    if (!companyRegex.test(companyName.trim())) {
-      toast.error("Company Name should only contain letters and spaces (no numbers allowed).");
+    const nameRegex = /^[A-Za-z ]+$/;
+    if (!nameRegex.test(name.trim())) {
+      toast.error("Full Name should only contain letters and spaces.");
       return;
     }
-  }
-  
+
+    // ✅ Company Name validation (if entered)
+    if (companyName.trim()) {
+      const companyRegex = /^[A-Za-z ]+$/;
+      if (!companyRegex.test(companyName.trim())) {
+        toast.error("Company Name should only contain letters and spaces (no numbers allowed).");
+        return;
+      }
+    }
 
     // ✅ Build and validate phone
     const dialCode = countries.find((c) => c.code === country)?.dialCode || "";
@@ -219,6 +236,22 @@ const EditProfileModal: React.FC<Props> = ({ open, onClose }) => {
       if (parsed.number !== user?.phone) fd.append("phone", parsed.number);
       if (avatarFile) fd.append("image", avatarFile);
 
+      // 🟣 Normalize biz type BEFORE comparing
+      const uiBizType = bizType.trim();
+      const normalizedBizType =
+        (uiBizType && BIZTYPE_MAP[uiBizType]) ||
+        (uiBizType
+          ? uiBizType
+              .toLowerCase()
+              .replace(/\s+/g, "_")
+              .replace(/–/g, "-")
+              .replace(/-/g, "_")
+          : "");
+
+      if (uiBizType) {
+        console.log("[edit-profile] bizType (UI) -> normalized:", uiBizType, "->", normalizedBizType);
+      }
+
       const businessPayload: any = {};
       if (companyName.trim() !== user?.company_name) businessPayload.company_name = companyName.trim();
       if (address1.trim() !== user?.address1) businessPayload.address1 = address1.trim();
@@ -229,11 +262,24 @@ const EditProfileModal: React.FC<Props> = ({ open, onClose }) => {
       if (website.trim() !== user?.website) businessPayload.website = website.trim();
       if (industry.trim() !== user?.industry) businessPayload.industry = industry.trim();
       if (employees.trim() !== user?.employees) businessPayload.employees = employees.trim();
-      if (bizType.trim() !== user?.biz_type) businessPayload.biz_type = bizType.trim();
+
+      // 🟣 Only attach biz_type if it actually changed (compare with backend code)
+      if (normalizedBizType && normalizedBizType !== user?.biz_type) {
+        businessPayload.biz_type = normalizedBizType;
+      }
+
+      console.log("[edit-profile] businessPayload candidate:", businessPayload);
 
       if (Object.keys(businessPayload).length > 0) {
         fd.append("business_info", JSON.stringify(businessPayload));
       }
+
+      // 🟣 Log form data safely (files summarized)
+      const fdDebug: Record<string, any> = {};
+      for (const [k, v] of fd.entries()) {
+        fdDebug[k] = v instanceof File ? { name: v.name, size: v.size, type: v.type } : v;
+      }
+      console.log("[edit-profile] FormData to backend:", fdDebug);
 
       if ([...fd.keys()].length === 0) {
         toast.info("No changes made.");
@@ -248,6 +294,9 @@ const EditProfileModal: React.FC<Props> = ({ open, onClose }) => {
       });
 
       const data = await res.json();
+      console.log("[edit-profile] fetch status:", res.status);
+      console.log("[edit-profile] response body:", data);
+
       if (!res.ok) {
         toast.error(data?.error || `Failed (${res.status})`);
         return;
@@ -299,7 +348,7 @@ const EditProfileModal: React.FC<Props> = ({ open, onClose }) => {
           <Field icon={<FiHome />} label="Address 1" value={address1} onChange={setAddress1} />
           <Field icon={<FiHome />} label="Address 2" value={address2} onChange={setAddress2} />
           <Field icon={<FiMapPin />} label="City" value={city} onChange={setCity} />
-           <IndustryField label="Industry" value={industry} setValue={setIndustry} open={openIndustry} setOpen={setOpenIndustry} search={search} setSearch={setSearch} filtered={filtered} />
+          <IndustryField label="Industry" value={industry} setValue={setIndustry} open={openIndustry} setOpen={setOpenIndustry} search={search} setSearch={setSearch} filtered={filtered} />
 
           <DropdownField label="Employees" icon={<FiUsers />} open={openEmployees} setOpen={setOpenEmployees} options={EMPLOYEE_OPTIONS} value={employees} setValue={setEmployees} />
           <DropdownField label="Business Type" icon={<FiLayers />} open={openBizType} setOpen={setOpenBizType} options={BIZTYPE_OPTIONS} value={bizType} setValue={setBizType} />
@@ -307,8 +356,6 @@ const EditProfileModal: React.FC<Props> = ({ open, onClose }) => {
           <DropdownField label="State" icon={<FiMapPin />} open={openState} setOpen={setOpenState} options={US_STATES} value={usState} setValue={setUsState} />
           <Field icon={<FiMapPin />} label="Post Code" value={postCode} onChange={setPostCode} />
           <Field icon={<FiGlobe />} label="Website" value={website} onChange={setWebsite} />
-
-         
 
           <Button text={loading ? "Updating..." : "Update"} fullWidth onClick={handleSave} disabled={loading} />
         </div>
