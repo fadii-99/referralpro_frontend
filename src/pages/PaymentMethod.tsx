@@ -140,7 +140,7 @@ const PaymentMethod: React.FC = () => {
       },
     };
 
-    console.log("🚀 Final Payload Sent to Backend:", payload);
+    // console.log("🚀 Final Payload Sent to Backend:", payload);
 
     const fd = new FormData();
     fd.append("payload", JSON.stringify(payload));

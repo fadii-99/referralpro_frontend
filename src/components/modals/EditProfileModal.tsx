@@ -279,7 +279,8 @@ const EditProfileModal: React.FC<Props> = ({ open, onClose }) => {
       for (const [k, v] of fd.entries()) {
         fdDebug[k] = v instanceof File ? { name: v.name, size: v.size, type: v.type } : v;
       }
-      console.log("[edit-profile] FormData to backend:", fdDebug);
+
+      // console.log("[edit-profile] FormData to backend:", fdDebug);
 
       if ([...fd.keys()].length === 0) {
         toast.info("No changes made.");
@@ -287,15 +288,18 @@ const EditProfileModal: React.FC<Props> = ({ open, onClose }) => {
         return;
       }
 
+
       const res = await fetch(`${serverUrl}/auth/update_user/`, {
         method: "POST",
         headers: { Authorization: token ? `Bearer ${token}` : "" },
         body: fd,
       });
 
+
       const data = await res.json();
-      console.log("[edit-profile] fetch status:", res.status);
-      console.log("[edit-profile] response body:", data);
+      // console.log("[edit-profile] fetch status:", res.status);
+      // console.log("[edit-profile] response body:", data);
+
 
       if (!res.ok) {
         toast.error(data?.error || `Failed (${res.status})`);
@@ -306,7 +310,7 @@ const EditProfileModal: React.FC<Props> = ({ open, onClose }) => {
       await loadUser();
       onClose();
     } catch (err) {
-      console.error("[update-user] error:", err);
+      // console.error("[update-user] error:", err);
       toast.error("Network error while updating profile.");
     } finally {
       setLoading(false);
