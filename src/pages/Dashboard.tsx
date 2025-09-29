@@ -61,7 +61,7 @@ const Dashboard: React.FC = () => {
         <h2 className="text-lg font-semibold text-gray-500">
           Welcome Back 👋 <br />
           <span className="text-3xl font-semibold text-primary-blue">
-            {loading ? "Loading..." : user?.name}
+           {loading ? "Loading..." : (user?.company_name ? user.company_name : user?.name)}
           </span>
         </h2>
       </div>
