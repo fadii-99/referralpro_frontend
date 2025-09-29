@@ -70,7 +70,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
       });
 
       const data = await res.json();
-      // console.log("[UserProvider] get_user response:", data);
+      console.log("[UserProvider] get_user response:", data);
 
       if (!res.ok) {
         setError(`Failed (${res.status})`);
@@ -101,7 +101,7 @@ const makeAvatarUrl = (fullName: string) => {
         email: data?.user?.email || "",
         phone: data?.user?.phone || "",
         role: data?.user?.role || "Member",
-       avatar: data?.user?.image || makeAvatarUrl(data?.user?.full_name),
+        avatar: data?.user?.image || makeAvatarUrl(data?.user?.full_name),
 
 
         company_name: data?.business_info?.company_name || "",

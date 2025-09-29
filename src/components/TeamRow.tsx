@@ -49,11 +49,11 @@ const TeamRow: React.FC<{
 
       {/* Name + Avatar */}
       <div className="flex items-center gap-3">
-        <img
+        {/* <img
           src={member.avatar}
           alt={`${member.name} avatar`}
           className="h-8 w-8 rounded-full object-cover"
-        />
+        /> */}
         <span className="font-medium text-gray-700 md:text-sm text-xs">
           {member.name}
         </span>
