@@ -5,21 +5,22 @@ import { RegistrationProvider } from './context/RegistrationProvider';
 import { TeamMembersProvider } from './context/TeamMembersProvider';
 import { ReferralProvider } from './context/ReferralProvider';
 import { UserProvider } from './context/UserProvider';
-// import { AdminUserProvider } from './adminContext/AdminUserProvider';
-// import { AdminCompanyProvider } from './adminContext/AdminCompanyProvider';
-// import { AdminTicketProvider } from './adminContext/AdminTicketProvider';
-// import { AdminReviewProvider } from './adminContext/AdminReviewProvider';
-
+import { AdminUserProvider } from './adminContext/AdminUserProvider';
+import { AdminCompanyProvider } from './adminContext/AdminCompanyProvider';
+import { AdminTicketProvider } from './adminContext/AdminTicketProvider';
+import { AdminReviewProvider } from './adminContext/AdminReviewProvider';
+import { NotificationProvider } from './context/NotificationProvider';
 
 
 function App() {
 
   return (
   <>
-    {/* <AdminReviewProvider>
+   <NotificationProvider>
+    <AdminReviewProvider>
         <AdminCompanyProvider>
           <AdminTicketProvider>
-            <AdminUserProvider> */}
+            <AdminUserProvider>
               <UserProvider>
                 <ReferralProvider>
                     <TeamMembersProvider>
@@ -29,10 +30,11 @@ function App() {
                     </TeamMembersProvider>
                   </ReferralProvider>
               </UserProvider>
-              {/* </AdminUserProvider>
+              </AdminUserProvider>
           </AdminTicketProvider>
         </AdminCompanyProvider>
-    </AdminReviewProvider> */}
+    </AdminReviewProvider>
+    </NotificationProvider>
   </>
   )
 }

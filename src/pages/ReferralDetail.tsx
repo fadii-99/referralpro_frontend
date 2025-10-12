@@ -307,7 +307,6 @@ const ReferralDetail: React.FC = () => {
               >
                 <option>Accept</option>
                 <option>Reject</option>
-                <option>In Progress</option>
               </select>
 
               <h4 className="text-sm font-semibold text-primary-blue mt-5">

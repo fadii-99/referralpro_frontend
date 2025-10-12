@@ -4,9 +4,10 @@ import Button from "../components/Button";
 import companyLogo from "./../assets/figmaIcons/company.png";
 import { Link, useNavigate } from "react-router-dom";
 import { RegistrationContext } from "../context/RegistrationProvider";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 type Card = "company" | "contractor";
-
 
 const Welcome: React.FC = () => {
   const navigate = useNavigate();
@@ -15,18 +16,21 @@ const Welcome: React.FC = () => {
     (ctx?.registrationData.profileType as Card) || "company"
   );
 
-  
+
+  const [accepted, setAccepted] = useState(false);
+
   const onContinue = () => {
+    if (!accepted) {
+      toast.error("Please accept the Terms & Conditions and Privacy Policy.");
+      return;
+    }
     ctx?.setRegistrationData((prev) => ({ ...prev, profileType: selected }));
     navigate("/BusinessRegistration");
   };
 
-
   useEffect(() => {
-  ctx?.startSignup();
-}, []);
-
-
+    ctx?.startSignup();
+  }, []);
 
   const CardRow: React.FC<{
     id: Card;
@@ -44,26 +48,28 @@ const Welcome: React.FC = () => {
         aria-pressed={active}
       >
         <div className="flex items-center justify-center rounded-xl bg-primary-purple/10 w-10 h-10 shrink-0">
-            {id === "company" ? (
-              <img src={companyLogo} alt="" className="w-5 h-5 object-contain" />
-            ) : (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-5 h-5 text-primary-purple"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 
+          {id === "company" ? (
+            <img src={companyLogo} alt="" className="w-5 h-5 object-contain" />
+          ) : (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-5 h-5 text-primary-purple"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 
                         1.79-4 4 1.79 4 4 4zm0 2c-3.33 0-6 1.34-6 
                         3v1h12v-1c0-1.66-2.67-3-6-3z" />
-              </svg>
-            )}
-          </div>
+            </svg>
+          )}
+        </div>
         <div className="flex-1">
           <div className="font-semibold text-primary-blue leading-tight sm:text-2xl text-lg">
             {title}
           </div>
-          <div className="sm:text-xs text-[10px] text-primary-blue font-medium pt-2">{subtitle}</div>
+          <div className="sm:text-xs text-[10px] text-primary-blue font-medium pt-2">
+            {subtitle}
+          </div>
         </div>
 
         <span
@@ -79,7 +85,6 @@ const Welcome: React.FC = () => {
       </button>
     );
   };
-
 
   return (
     <div className="grid md:grid-cols-5 w-full min-h-screen">
@@ -101,8 +106,40 @@ const Welcome: React.FC = () => {
             <CardRow id="contractor" title="Independent Contractor" subtitle="Individual user" />
           </div>
 
+          {/* Agreement line (your chosen #4 copy) */}
+          <div className="mt-5 flex items-start gap-3">
+            <input
+              id="accept"
+              type="checkbox"
+              checked={accepted}
+              onChange={(e) => setAccepted(e.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-gray-300 text-primary-purple focus:ring-primary-purple checked:bg-primary-purple checked:border-primary-purple"
+            />
+            <label htmlFor="accept" className="text-xs text-primary-blue pt-1">
+              I agree to the{" "}
+              <Link
+                to="/Terms"
+                className="text-primary-purple font-regular hover:text-primary-purple/80"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Terms & Condition
+              </Link>{" "}
+              and acknowledge the{" "}
+              <Link
+                to="/Privacy"
+                className="text-primary-purple font-regular hover:text-primary-purple/80"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Privacy Policy
+              </Link>
+              .
+            </label>
+          </div>
+
           <div className="mt-6">
-            <Button text="Register" onClick={onContinue} />
+            <Button text="Register" onClick={onContinue} disabled={!accepted} />
           </div>
 
           <p className="mt-8 text-center text-xs text-gray-600">
@@ -116,6 +153,16 @@ const Welcome: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {/* If you already mount ToastContainer globally, remove this */}
+      <ToastContainer
+        position="top-right"
+        autoClose={2000}
+        hideProgressBar={false}
+        closeOnClick
+        pauseOnHover
+        draggable
+      />
     </div>
   );
 };

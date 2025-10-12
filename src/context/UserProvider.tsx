@@ -116,6 +116,8 @@ const makeAvatarUrl = (fullName: string) => {
         biz_type: data?.business_info?.biz_type || "",
       };
 
+      localStorage.setItem('userId', mapped.id);
+
       setUser(mapped);
     } catch (err) {
       console.error("[UserProvider] network error:", err);

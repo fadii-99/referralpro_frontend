@@ -31,15 +31,17 @@ const Profile = lazy(() => import("./../pages/Profile.tsx"));
 
 
 // Admin
-// import AdminParent from "./AdminParent.tsx";
-// const AdminDashboard= lazy(() => import("./../adminPages/AdminDashboard.tsx"));
-// const AdminFinancial = lazy(() => import("./../adminPages/AdminFinancial.tsx"));
-// const AdminUsers = lazy(() => import("./../adminPages/AdminUsers.tsx")); // 👈 NEW
-// const AdminCompany = lazy(() => import("./../adminPages/AdminCompany.tsx")); // 👈 NEW
-// const AdminTickets = lazy(() => import("./../adminPages/AdminTickets.tsx")); // 👈 NEW
-// const AdminReviews= lazy(() => import("./../adminPages/AdminReviews.tsx")); // 👈 NEW
+import AdminParent from "./AdminParent.tsx";
+const AdminLogin = lazy(() => import("./../adminPages/AdminLogin.tsx"));
+const AdminDashboard= lazy(() => import("./../adminPages/AdminDashboard.tsx"));
+const AdminFinancial = lazy(() => import("./../adminPages/AdminFinancial.tsx"));
+const AdminUsers = lazy(() => import("./../adminPages/AdminUsers.tsx")); // 👈 NEW
+const AdminCompany = lazy(() => import("./../adminPages/AdminCompany.tsx")); // 👈 NEW
+const AdminTickets = lazy(() => import("./../adminPages/AdminTickets.tsx")); // 👈 NEW
+const AdminReviews= lazy(() => import("./../adminPages/AdminReviews.tsx")); // 👈 NEW
 
-
+const Terms = lazy(() => import("./../pages/Terms"));
+const Privacy = lazy(() => import("./../pages/Privacy"));
 
 
 
@@ -58,6 +60,14 @@ const router = createBrowserRouter([
     element: (
       <Suspense fallback={<Loader />}>
         <Login />
+      </Suspense>
+    ),
+  },
+   {
+    path: "/AdminLogin",
+    element: (
+      <Suspense fallback={<Loader />}>
+        <AdminLogin />
       </Suspense>
     ),
   },
@@ -141,6 +151,23 @@ const router = createBrowserRouter([
       </Suspense>
     ),
   },
+  {
+  path: "/Terms",
+  element: (
+    <Suspense fallback={<Loader />}>
+      <Terms />
+    </Suspense>
+  ),
+},
+{
+  path: "/Privacy",
+  element: (
+    <Suspense fallback={<Loader />}>
+      <Privacy />
+    </Suspense>
+  ),
+},
+
 
   // 🔒 Private Dashboard Routes
   {
@@ -228,67 +255,67 @@ const router = createBrowserRouter([
   },
 
   // 🔒 Admin Dashboard Routes
-// {
-//   path: "/Admin",
-//   element: (
-//     <Suspense fallback={<Loader />}>
-//       <AdminParent />
-//     </Suspense>
-//   ),
-//   children: [
-//     {
-//       index: true,
-//       element: (
-//         <Suspense fallback={<Loader />}>
-//           <AdminDashboard />
-//         </Suspense>
-//       ),
-//     }
-//     ,
-//       {
-//       path: "Financial",
-//       element: (
-//         <Suspense fallback={<Loader />}>
-//           <AdminFinancial />
-//         </Suspense>
-//       ),
-//     }
-//     ,
-//     {
-//       path: "Users",
-//       element: (
-//         <Suspense fallback={<Loader />}>
-//           <AdminUsers />
-//         </Suspense>
-//       ),
-//     }
-//     ,
-//       {
-//         path: "Company",
-//         element: (
-//           <Suspense fallback={<Loader />}>
-//             <AdminCompany />
-//           </Suspense>
-//         ),
-//       },
-//       {
-//         path: "Tickets",
-//         element: (
-//           <Suspense fallback={<Loader />}>
-//             <AdminTickets />
-//           </Suspense>
-//         ),
-//       },
-//     {
-//       path: "Reviews",
-//       element: (
-//         <Suspense fallback={<Loader />}>
-//           <AdminReviews />
-//         </Suspense>
-//       ),
-//     },
-//   ],
-// },
+{
+  path: "/Admin",
+  element: (
+    <Suspense fallback={<Loader />}>
+      <AdminParent />
+    </Suspense>
+  ),
+  children: [
+    {
+      index: true,
+      element: (
+        <Suspense fallback={<Loader />}>
+          <AdminDashboard />
+        </Suspense>
+      ),
+    }
+    ,
+      {
+      path: "Financial",
+      element: (
+        <Suspense fallback={<Loader />}>
+          <AdminFinancial />
+        </Suspense>
+      ),
+    }
+    ,
+    {
+      path: "Users",
+      element: (
+        <Suspense fallback={<Loader />}>
+          <AdminUsers />
+        </Suspense>
+      ),
+    }
+    ,
+      {
+        path: "Company",
+        element: (
+          <Suspense fallback={<Loader />}>
+            <AdminCompany />
+          </Suspense>
+        ),
+      },
+      {
+        path: "Tickets",
+        element: (
+          <Suspense fallback={<Loader />}>
+            <AdminTickets />
+          </Suspense>
+        ),
+      },
+    {
+      path: "Reviews",
+      element: (
+        <Suspense fallback={<Loader />}>
+          <AdminReviews />
+        </Suspense>
+      ),
+    },
+  ],
+},
 ]);
 
 export default router;

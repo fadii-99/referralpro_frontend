@@ -6,8 +6,6 @@ import MultiStepHeader from "./../components/MultiStepHeader";
 
 import { HiOutlineHome, HiOutlineLocationMarker, HiOutlineOfficeBuilding, HiOutlineGlobeAlt } from "react-icons/hi";
 
-
-
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -22,6 +20,9 @@ import {
 
 import rawMetadata from "libphonenumber-js/metadata.full.json";
 const metadata: any = rawMetadata;
+
+// ✅ ADDED: server url
+const serverUrl = import.meta.env.VITE_SERVER_URL;
 
 // Build full country list A → Z
 const countries = getCountries()
@@ -46,7 +47,7 @@ const CompanyInformation: React.FC = () => {
   const [website, setWebsite] = useState(registrationData.website);
 
   // Phone + Country
-  const [country, setCountry] = useState("US"); // Default Pakistan
+  const [country, setCountry] = useState("US");
   const [localPhone, setLocalPhone] = useState(""); // User entered part
   const [openDropdown, setOpenDropdown] = useState(false);
 
@@ -67,88 +68,112 @@ const CompanyInformation: React.FC = () => {
     }
   }, [registrationData]);
 
- const handleContinue: React.MouseEventHandler<HTMLButtonElement> = () => {
-  if (
-    !address1.trim() ||
-    !city.trim() ||
-    !postCode.trim() ||
-    !localPhone.trim()
-  ) {
-    toast.error("Please fill out all required fields.");
-    return;
-  }
+  // ✅ CHANGED: made async to await API call
+  const handleContinue: React.MouseEventHandler<HTMLButtonElement> = async () => {
+    if (
+      !address1.trim() ||
+      !city.trim() ||
+      !postCode.trim() ||
+      !localPhone.trim()
+    ) {
+      toast.error("Please fill out all required fields.");
+      return;
+    }
 
-  // Postcode must be numeric
-  const postCodeRegex = /^[0-9]+$/;
-  if (!postCodeRegex.test(postCode.trim())) {
-    toast.error("Please enter a valid numeric postal code without spaces.");
-    return;
-  }
+    // Postcode must be numeric
+    const postCodeRegex = /^[0-9]+$/;
+    if (!postCodeRegex.test(postCode.trim())) {
+      toast.error("Please enter a valid numeric postal code without spaces.");
+      return;
+    }
 
-  // City must contain only letters & spaces
-  const cityRegex = /^[A-Za-z ]+$/;
-  if (!cityRegex.test(city.trim())) {
-    toast.error(
-      "City name should only contain letters and spaces (no numbers or special characters)."
-    );
-    return;
-  }
-
-  // Website validation → only if user entered something
-  if (website.trim()) {
-    const websiteRegex =
-      /^www\.[^\s]+\.(com|org|net|edu|gov|mil|info|biz|xyz|online|io|ai|tech|app|dev)(\.[a-z]{2,3})?$/i;
-    if (!websiteRegex.test(website.trim())) {
+    // City must contain only letters & spaces
+    const cityRegex = /^[A-Za-z ]+$/;
+    if (!cityRegex.test(city.trim())) {
       toast.error(
-        "Please enter a valid website address (e.g., www.example.com or www.example.com.pk)."
+        "City name should only contain letters and spaces (no numbers or special characters)."
       );
       return;
     }
-  }
 
-  // Build full phone number string
-  const dialCode = countries.find((c) => c.code === country)?.dialCode || "";
-  const fullPhone = `${dialCode}${localPhone}`;
-
-  // Phone validation
-  const parsed = parsePhoneNumberFromString(fullPhone);
-  let expectedLength: number | null = null;
-
-  try {
-    const exampleNum = getExampleNumber(country as any, metadata);
-    if (exampleNum) {
-      expectedLength = exampleNum.nationalNumber.toString().length;
+    // Website validation → only if user entered something
+    if (website.trim()) {
+      const websiteRegex =
+        /^www\.[^\s]+\.(com|org|net|edu|gov|mil|info|biz|xyz|online|io|ai|tech|app|dev)(\.[a-z]{2,3})?$/i;
+      if (!websiteRegex.test(website.trim())) {
+        toast.error(
+          "Please enter a valid website address (e.g., www.example.com or www.example.com.pk)."
+        );
+        return;
+      }
     }
-  } catch {
-    expectedLength = null;
-  }
 
-  if (!parsed || !parsed.isValid()) {
-    const example = countries.find((c) => c.code === country);
-    let msg = `Phone number for ${example?.name || country} must be valid.`;
-    if (expectedLength) {
-      msg = `Phone number for ${example?.name || country} must be valid and contain ${expectedLength} digits.`;
+    // Build full phone number string
+    const dialCode = countries.find((c) => c.code === country)?.dialCode || "";
+    const fullPhone = `${dialCode}${localPhone}`;
+
+    // Phone validation
+    const parsed = parsePhoneNumberFromString(fullPhone);
+    let expectedLength: number | null = null;
+
+    try {
+      const exampleNum = getExampleNumber(country as any, metadata);
+      if (exampleNum) {
+        expectedLength = exampleNum.nationalNumber.toString().length;
+      }
+    } catch {
+      expectedLength = null;
     }
-    toast.error(msg);
-    return;
-  }
 
-  setRegistrationData((prev) => ({
-    ...prev,
-    address1: address1.trim(),
-    address2: address2.trim(),
-    city: city.trim(),
-    postCode: postCode.trim(),
-    phone: parsed.number, // full formatted number like +923001234567
-    website: website.trim(), // empty string allowed
-  }));
+    if (!parsed || !parsed.isValid()) {
+      const example = countries.find((c) => c.code === country);
+      let msg = `Phone number for ${example?.name || country} must be valid.`;
+      if (expectedLength) {
+        msg = `Phone number for ${example?.name || country} must be valid and contain ${expectedLength} digits.`;
+      }
+      toast.error(msg);
+      return;
+    }
 
-  navigate("/PasswordCreation");
-};
+    // ✅ ADDED: server-side phone check BEFORE saving & navigating
+    try {
+      const res = await fetch(`${serverUrl}/auth/check_phone/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ phone: parsed.number }), // backend expects { phone }
+      });
 
+      if (res.status === 200) {
+        // phone is available → persist and move on
+        setRegistrationData((prev) => ({
+          ...prev,
+          address1: address1.trim(),
+          address2: address2.trim(),
+          city: city.trim(),
+          postCode: postCode.trim(),
+          phone: parsed.number, // full formatted number like +923001234567
+          website: website.trim(), // empty string allowed
+        }));
+
+        navigate("/PasswordCreation");
+      } else if (res.status === 400) {
+        
+        toast.error("Phone number is already in use");
+      } else {
+        const errTxt = await res.text();
+        toast.error(`Phone check failed (${res.status}): ${errTxt || "Unknown error"}`);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Network error while checking phone. Please try again.");
+    }
+  };
 
   return (
-    <div className="grid md:grid-cols-5 w-full min-h-screen">
+    <div className="grid md:grid-cols-5 w/full min-h-screen">
       <SideDesign />
 
       <div className="md:col-span-3 flex flex-col bg-[#F4F2FA]">
@@ -165,86 +190,86 @@ const CompanyInformation: React.FC = () => {
 
         <div className="flex-1 flex items-center justify-center px-4">
           <div className="w-full max-w-lg space-y-4">
-              {/* Address Line 1 */}
-              <div>
-                <label className="block text-[11px] text-primary-blue font-semibold mb-1.5">
-                  Address Line 1 <span className="text-rose-500">*</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-purple">
-                    <HiOutlineHome className="h-5 w-5" />
-                  </span>
-                  <input
-                    type="text"
-                    placeholder="Enter your address"
-                    value={address1}
-                    onChange={(e) => setAddress1(e.target.value)}
-                    className="w-full pl-12 pr-4 py-4 rounded-full bg-white border border-gray-200 
+            {/* Address Line 1 */}
+            <div>
+              <label className="block text-[11px] text-primary-blue font-semibold mb-1.5">
+                Address Line 1 <span className="text-rose-500">*</span>
+              </label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-purple">
+                  <HiOutlineHome className="h-5 w-5" />
+                </span>
+                <input
+                  type="text"
+                  placeholder="Enter your address"
+                  value={address1}
+                  onChange={(e) => setAddress1(e.target.value)}
+                  className="w-full pl-12 pr-4 py-4 rounded-full bg-white border border-gray-200 
                               text-xs md:text-sm text-gray-800 placeholder-gray-400 outline-none"
-                  />
-                </div>
+                />
               </div>
+            </div>
 
-              {/* Address Line 2 */}
-              <div>
-                <label className="block text-[11px] text-primary-blue font-semibold mb-1.5">
-                  Address Line 2
-                </label>
-                <div className="relative">
-                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-purple">
-                    <HiOutlineHome className="h-5 w-5" />
-                  </span>
-                  <input
-                    type="text"
-                    placeholder="Enter your address"
-                    value={address2}
-                    onChange={(e) => setAddress2(e.target.value)}
-                    className="w-full pl-12 pr-4 py-4 rounded-full bg-white border border-gray-200 
+            {/* Address Line 2 */}
+            <div>
+              <label className="block text-[11px] text-primary-blue font-semibold mb-1.5">
+                Address Line 2
+              </label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-purple">
+                  <HiOutlineHome className="h-5 w-5" />
+                </span>
+                <input
+                  type="text"
+                  placeholder="Enter your address"
+                  value={address2}
+                  onChange={(e) => setAddress2(e.target.value)}
+                  className="w-full pl-12 pr-4 py-4 rounded-full bg-white border border-gray-200 
                               text-xs md:text-sm text-gray-800 placeholder-gray-400 outline-none"
-                  />
-                </div>
+                />
               </div>
+            </div>
 
             {/* City + Post Code */}
             <div className="grid grid-cols-2 gap-3 md:gap-4">
-               <div>
-                  <label className="block text-[11px] text-primary-blue font-semibold mb-1.5">
-                    City <span className="text-rose-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-purple">
-                      <HiOutlineOfficeBuilding className="h-5 w-5" />
-                    </span>
-                    <input
-                      type="text"
-                      placeholder="Enter City"
-                      value={city}
-                      onChange={(e) => setCity(e.target.value)}
-                      className="w-full pl-12 pr-4 py-4 rounded-full bg-white border border-gray-200 
+              <div>
+                <label className="block text-[11px] text-primary-blue font-semibold mb-1.5">
+                  City <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-purple">
+                    <HiOutlineOfficeBuilding className="h-5 w-5" />
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Enter City"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    className="w-full pl-12 pr-4 py-4 rounded-full bg-white border border-gray-200 
                                 text-xs md:text-sm text-gray-800 placeholder-gray-400 outline-none"
-                    />
-                  </div>
+                  />
                 </div>
+              </div>
 
-                {/* Post Code */}
-                <div>
-                  <label className="block text-[11px] text-primary-blue font-semibold mb-1.5">
-                    Post Code <span className="text-rose-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-purple">
-                      <HiOutlineLocationMarker className="h-5 w-5" />
-                    </span>
-                    <input
-                      type="text"
-                      placeholder="Enter Post Code"
-                      value={postCode}
-                      onChange={(e) => setPostCode(e.target.value)}
-                      className="w-full pl-12 pr-4 py-4 rounded-full bg-white border border-gray-200 
+              {/* Post Code */}
+              <div>
+                <label className="block text-[11px] text-primary-blue font-semibold mb-1.5">
+                  Post Code <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-purple">
+                    <HiOutlineLocationMarker className="h-5 w-5" />
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Enter Post Code"
+                    value={postCode}
+                    onChange={(e) => setPostCode(e.target.value)}
+                    className="w-full pl-12 pr-4 py-4 rounded-full bg-white border border-gray-200 
                                 text-xs md:text-sm text-gray-800 placeholder-gray-400 outline-none"
-                    />
-                  </div>
-            </div>
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Phone with Custom Dropdown */}
@@ -263,9 +288,7 @@ const CompanyInformation: React.FC = () => {
                   {countries.find((c) => c.code === country)?.dialCode || "+--"}
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className={`ml-8 h-3 w-3 text-gray-500 transition-transform ${
-                      openDropdown ? "rotate-180" : ""
-                    }`}
+                    className={`ml-8 h-3 w-3 text-gray-500 transition-transform ${openDropdown ? "rotate-180" : ""}`}
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -287,7 +310,6 @@ const CompanyInformation: React.FC = () => {
                   className="flex-1 pl-4 pr-4 py-4 rounded-r-full bg-white border border-gray-200 text-xs md:text-sm text-gray-800 placeholder-gray-400 outline-none"
                   style={{ height: "48px" }}
                 />
-
 
                 {/* Dropdown List */}
                 {openDropdown && (
@@ -330,7 +352,7 @@ const CompanyInformation: React.FC = () => {
                             text-xs md:text-sm text-gray-800 placeholder-gray-400 outline-none"
                 />
               </div>
-           </div>
+            </div>
 
             <Button text="Next : Create Your Password" onClick={handleContinue} />
           </div>

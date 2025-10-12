@@ -1,12 +1,11 @@
-// src/screens/Login.tsx
-import React, { useContext, useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+// src/screens/AdminLogin.tsx
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import SideDesign from "../components/SideDesign";
 import Button from "../components/Button";
 import lockIcon from "../assets/figmaIcons/lock.png";
 import messageIcon from "../assets/figmaIcons/sms.svg";
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
-import { RegistrationContext } from "../context/RegistrationProvider";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -14,21 +13,11 @@ const serverUrl = import.meta.env.VITE_SERVER_URL;
 
 type LoginForm = { email: string; password: string };
 
-const Login: React.FC = () => {
+const AdminLogin: React.FC = () => {
   const navigate = useNavigate();
-  const ctx = useContext(RegistrationContext);
 
-  useEffect(() => {
-    ctx?.clearRegistrationData();
-    ctx?.setTempToken?.("");
-    ctx?.finishSignup({ clear: true });
-  }, []);
 
-  const [form, setForm] = useState<LoginForm>({
-    email: localStorage.getItem("rememberEmail") || "",
-    password: "",
-  });
-  const [rememberMe, setRememberMe] = useState<boolean>(!!localStorage.getItem("rememberEmail"));
+  const [form, setForm] = useState<LoginForm>({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -46,30 +35,21 @@ const Login: React.FC = () => {
     fd.append("email", form.email.trim());
     fd.append("password", form.password);
     fd.append("type", "web");
-    fd.append("role", "company");
+    fd.append("role", "admin");
 
-    
+
+
     try {
       const res = await fetch(`${serverUrl}/auth/login/`, {
         method: "POST",
         body: fd,
-        // credentials: "include", 
       });
 
-      // console.log("[login] status:", res.status, res.statusText);
-      const headersDump: Record<string, string> = {};
-      res.headers.forEach((v, k) => (headersDump[k] = v));
-      // console.log("[login] headers:", headersDump);
-
       const raw = await res.text();
-      
-
       let json: any = null;
       try {
         json = raw ? JSON.parse(raw) : null;
       } catch {}
-      // console.log("[login] json (if parsable):", json);
-
 
       if (!res.ok) {
         const msg =
@@ -79,28 +59,19 @@ const Login: React.FC = () => {
         return;
       }
 
-
-       if (json?.tokens?.access) {
-          localStorage.setItem("accessToken", json.tokens.access);
-        }
-
-
-        if (rememberMe && form.email.trim()) {
-        localStorage.setItem("rememberEmail", form.email.trim());
-      } else {
-        localStorage.removeItem("rememberEmail");
+      
+      if (json?.tokens?.access) {
+        localStorage.setItem("adminAccessToken", json.tokens.access);
       }
 
-      navigate("/Dashboard");
+      navigate("/Admin");
     } catch (err) {
-      console.error("[login] network error:", err);
+      console.error("[admin login] network error:", err);
       toast.error("Network error. Try again.");
     } finally {
       setLoading(false);
     }
   };
-
-
 
   return (
     <div className="grid md:grid-cols-5 w-full min-h-screen">
@@ -109,8 +80,8 @@ const Login: React.FC = () => {
       <div className="md:col-span-3 flex items-center justify-center px-4">
         <div className="w-full max-w-lg">
           <div className="flex flex-col items-center gap-3 mb-8">
-            <h1 className="text-primary-blue font-semibold sm:text-4xt text-3xl">Login</h1>
-            <p className="text-xs text-gray-700 text-center">Enter your email and password to log in</p>
+            <h1 className="text-primary-blue font-semibold sm:text-4xt text-3xl">Admin Login</h1>
+            <p className="text-xs text-gray-700 text-center">Enter your admin credentials to log in</p>
           </div>
 
           <form className="flex flex-col gap-5" autoComplete="off">
@@ -168,39 +139,9 @@ const Login: React.FC = () => {
               </div>
             </div>
 
-            {/* Remember me + Forgot password */}
-            <div className="flex items-center justify-between mt-1">
-              <label className="flex items-center gap-2 text-xs text-primary-blue">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 text-primary-purple focus:ring-primary-purple checked:bg-primary-purple checked:border-primary-purple"
-                />
-                <span>Remember me</span>
-              </label>
-
-              <Link
-                to="/ForgetPassword"
-                className="text-xs font-semibold text-primary-purple/80 hover:text-primary-purple transition hover:scale-[101%]"
-              >
-                Forgot your password?
-              </Link>
-            </div>
-
             <Button text={loading ? "Logging in..." : "Login"} disabled={loading} onClick={onLoginClick} />
           </form>
 
-          {/* CTA: Don't have an account? */}
-          <p className="mt-6 text-center text-xs text-gray-600">
-            Don’t have an account?{" "}
-            <Link
-              to="/"
-              className="text-primary-purple font-semibold underline-offset-2 inline-block hover:scale-[103%] duration-300"
-            >
-              Sign up
-            </Link>
-          </p>
         </div>
       </div>
 
@@ -209,4 +150,4 @@ const Login: React.FC = () => {
   );
 };
 
-export default Login;
+export default AdminLogin;
