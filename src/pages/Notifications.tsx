@@ -71,6 +71,7 @@ const Notifications: React.FC = () => {
     [totalCount, pageSize]
   );
 
+  // ---- FIXED: fetchPage works with VITE_SERVER_URL="/api" or absolute ----
   const fetchPage = async (pageNum: number) => {
     const token = getAccessToken();
     if (!token) {
@@ -78,37 +79,71 @@ const Notifications: React.FC = () => {
       setInitialLoading(false);
       return;
     }
+
     setLoading(true);
     setError(null);
-    try {
-      const url = new URL(`${serverUrl.replace(/\/+$/, "")}/notifications/`);
-      url.searchParams.set("page", String(pageNum));
-      url.searchParams.set("page_size", String(pageSize));
-      // NOTE: do NOT pass event_type here (backend exact match). We filter client-side.
 
-      const res = await fetch(url.toString(), {
+    try {
+      const rawBase = (serverUrl || "").trim();
+      // if absolute (http/https), use as-is; else join with current origin
+      const apiBase = /^https?:\/\//i.test(rawBase)
+        ? rawBase.replace(/\/+$/, "")
+        : (window.location.origin + "/" + rawBase.replace(/^\/+/, "")).replace(/\/+$/, "");
+
+      const listUrl =
+        `${apiBase}/notifications/?page=${encodeURIComponent(String(pageNum))}` +
+        `&page_size=${encodeURIComponent(String(pageSize))}`;
+
+      const res = await fetch(listUrl, {
+        method: "GET",
         headers: {
           Accept: "application/json",
           Authorization: `Bearer ${token}`,
         },
       });
 
+      // safe body reader (json → text fallback)
+      const ct = res.headers.get("content-type") || "";
+      const readBody = async () => {
+        if (ct.includes("application/json")) {
+          try {
+            return await res.json();
+          } catch {}
+        }
+        try {
+          return await res.text();
+        } catch {
+          return null;
+        }
+      };
+
       if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(`HTTP ${res.status} ${txt || res.statusText}`);
+        const body = await readBody();
+        const msg =
+          (body && typeof body === "object" && (body.error || body.detail || body.message)) ||
+          (typeof body === "string" && body) ||
+          res.statusText ||
+          "Request failed";
+        throw new Error(`HTTP ${res.status} ${msg}`);
       }
 
-      const data = (await res.json()) as ApiResponse;
+      const body = await readBody();
+      const data = (body && typeof body === "object" ? body : { notifications: [], pagination: {} }) as ApiResponse;
 
-      // referral-only on client
-      const onlyReferral = (data.notifications || []).filter(isReferralRow);
+      // referral-only
+      const onlyReferral = (Array.isArray(data.notifications) ? data.notifications : []).filter(isReferralRow);
       const mapped = onlyReferral.map(normalize);
 
       setRows(mapped); // replace page (no append)
-      setTotalCount(Number(data.pagination?.total_count) || 0);
-      setPage(data.pagination?.page || pageNum);
+
+      // IMPORTANT: server total_count is for ALL events; show count for filtered page to keep UI sane
+      const fallbackPageCount = mapped.length;
+      setTotalCount(Number(data.pagination?.total_count) || fallbackPageCount);
+      setPage(Number(data.pagination?.page) || pageNum);
     } catch (e: any) {
       setError(e?.message || "Failed to load notifications");
+      setRows([]);
+      setTotalCount(0);
     } finally {
       setLoading(false);
       setInitialLoading(false);
@@ -123,11 +158,6 @@ const Notifications: React.FC = () => {
       document.querySelector("#notifications-root")?.scrollIntoView({ behavior: "smooth" });
     } catch {}
   };
-
-  // const refresh = () => {
-  //   setInitialLoading(true);
-  //   void fetchPage(1);
-  // };
 
   useEffect(() => {
     void fetchPage(1);
@@ -209,7 +239,6 @@ const Notifications: React.FC = () => {
                 onChange={onPageChange}
               />
             </div>
-
 
             {loading && (
               <div className="mt-4 flex items-center justify-center">

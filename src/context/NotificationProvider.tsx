@@ -51,14 +51,40 @@ const matchesReferral = (obj: any) => {
   return et.includes("referral");
 };
 
-/** Build absolute ws(s):// URL and append JWT token in querystring */
+/** Resolve HTTP base from VITE_SERVER_URL (supports "/api" or absolute) */
+function getHttpBase(): string {
+  const raw = (serverUrl || "").trim();
+  if (!raw) return window.location.origin;
+  if (/^https?:\/\//i.test(raw)) return raw.replace(/\/+$/, "");
+  return (window.location.origin + "/" + raw.replace(/^\/+/, "")).replace(/\/+$/, "");
+}
+
+/** Resolve WS base aligned with HTTP base */
+function getWsBase(): string {
+  const raw = (serverUrl || "").trim();
+  const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+  if (/^https?:\/\//i.test(raw)) {
+    // absolute: keep host from raw, use ws(s) scheme
+    try {
+      const u = new URL(raw);
+      return `${proto}//${u.host}${u.pathname.replace(/\/+$/, "")}`;
+    } catch {
+      // fallback to current host if parsing fails
+      return `${proto}//${window.location.host}/${raw.replace(/^\/+/, "")}`.replace(/\/+$/, "");
+    }
+  }
+  // relative: same host + /api
+  return `${proto}//${window.location.host}/${raw.replace(/^\/+/, "")}`.replace(/\/+$/, "");
+}
+
+/** Build WS URL for /ws/notifications/:userId/ and append token as query */
 function buildWsUrl(userId: string | number, token: string): string {
-  const u = new URL(serverUrl);
-  u.protocol = u.protocol === "https:" ? "wss:" : "ws:";
-  u.pathname = `/api/ws/notifications/${userId}/`; // absolute so we don't end up with /api/api/...
-  if (token) u.searchParams.set("token", token);   // <-- send JWT here
-  console.log('Ali loru', u.toString());
-  return u.toString();
+  const wsBase = getWsBase(); // e.g. wss://host/api
+  let url = `${wsBase}/ws/notifications/${userId}/`;
+  if (token) {
+    url += (url.includes("?") ? "&" : "?") + `token=${encodeURIComponent(token)}`;
+  }
+  return url;
 }
 
 /** Normalize server payload into minimal shape */
@@ -97,26 +123,37 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode; alertOn
       setLoading(true);
       setError(null);
       try {
-        const url = new URL(`${serverUrl.replace(/\/+$/, "")}/notifications/`);
-        url.searchParams.set("page", String(opts?.page ?? 1));
-        url.searchParams.set("page_size", String(opts?.page_size ?? 50));
-        if (typeof opts?.unread_only === "boolean") {
-          url.searchParams.set("unread_only", String(opts.unread_only));
-        }
+        const base = getHttpBase(); // handles "/api" or absolute
+        const page = String(opts?.page ?? 1);
+        const page_size = String(opts?.page_size ?? 50);
+        const unread_only = typeof opts?.unread_only === "boolean" ? `&unread_only=${String(opts.unread_only)}` : "";
+        const url = `${base}/notifications/?page=${encodeURIComponent(page)}&page_size=${encodeURIComponent(page_size)}${unread_only}`;
 
-        log("REST GET", url.toString());
-        const res = await fetch(url.toString(), {
+        log("REST GET", url);
+        const res = await fetch(url, {
           headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
         });
 
+        const ct = res.headers.get("content-type") || "";
+        const readBody = async () => {
+          if (ct.includes("application/json")) {
+            try { return await res.json(); } catch {}
+          }
+          try { return await res.text(); } catch { return null; }
+        };
+
         if (!res.ok) {
-          const txt = await res.text();
-          setError(`HTTP ${res.status}`);
-          err("REST error body:", txt);
-          return;
+          const body = await readBody();
+          const msg =
+            (body && typeof body === "object" && (body.error || body.detail || body.message)) ||
+            (typeof body === "string" && body) ||
+            res.statusText ||
+            "Request failed";
+          throw new Error(`HTTP ${res.status} ${msg}`);
         }
 
-        const data = await res.json();
+        const body = await readBody();
+        const data = (body && typeof body === "object" ? body : { notifications: [] }) as any;
         const raw: any[] = Array.isArray(data?.notifications) ? data.notifications : [];
 
         // ✅ client-side filter to only "referral" event types
@@ -183,7 +220,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode; alertOn
     cleanupWs();
     manualCloseRef.current = false;
 
-    const wsUrl = buildWsUrl(userId, token); // <-- token passed
+    const wsUrl = buildWsUrl(userId, token); // <-- token passed (works with /api)
     log("WS connecting →", wsUrl);
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
@@ -209,10 +246,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode; alertOn
       // ✅ only process “referral” event types
       if (!matchesReferral(payload)) return;
 
-      // if (alertOnIncoming) {
-      //   const txt = [payload?.title, payload?.message, payload?.event].filter(Boolean).join(" — ") || "Notification";
-      //   try { window.alert(txt); } catch {}
-      // }
+      if (alertOnIncoming) {
+        const txt = [payload?.title, payload?.message, payload?.event].filter(Boolean).join(" — ") || "Notification";
+        try { window.alert(txt); } catch {}
+      }
 
       const item = normalizePayload(payload);
       setNotifications((prev) => [item, ...prev].slice(0, CAP));
@@ -224,17 +261,14 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode; alertOn
       setConnected(false);
     };
 
-   ws.onclose = (e) => {
-  console.groupCollapsed("[WS close]");
-  // console.log("code:", e.code);
-  console.log("reason:", e.reason);
-  // console.log("wasClean:", e.wasClean);
-  console.groupEnd();
+    ws.onclose = (e) => {
+      console.groupCollapsed("[WS close]");
+      console.log("reason:", e.reason);
+      console.groupEnd();
 
-  setConnected(false);
-  if (!manualCloseRef.current) scheduleReconnect();
-};
-
+      setConnected(false);
+      if (!manualCloseRef.current) scheduleReconnect();
+    };
   }, [cleanupWs, scheduleReconnect, alertOnIncoming]);
 
   const disconnectSocket = useCallback(() => {
