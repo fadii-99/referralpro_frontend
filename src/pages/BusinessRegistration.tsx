@@ -49,13 +49,16 @@ const BusinessRegistration: React.FC = () => {
     ).values()
   ).sort((a, b) => a.subcategory.localeCompare(b.subcategory));
 
+
   // ✅ Progressive strict search
   const normalizedSearch = normalize(search);
   const filtered = SUBCATEGORIES.filter(sub =>
     !normalizedSearch
       ? true
-      : normalize(sub.subcategory).startsWith(normalizedSearch)
+      : normalize(sub.subcategory).includes(normalizedSearch) 
+
   );
+
 
   useEffect(() => {
     setFirstName(registrationData.firstName || "");

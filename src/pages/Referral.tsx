@@ -34,6 +34,7 @@ const Referral: React.FC = () => {
 
   const handleRowClick = (ref: Referral) => {
     localStorage.setItem("selectedReferralId", ref.reference_id);
+    localStorage.setItem("selectedId", ref.id);
     const companySlug = slugify(ref.referred_to_name);
     navigate(`/Dashboard/Referral/${companySlug}`);
   };

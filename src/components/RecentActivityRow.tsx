@@ -8,10 +8,15 @@ interface RecentActivityRowProps {
 
 const RecentActivityRow: React.FC<RecentActivityRowProps> = ({ text, time }) => {
   return (
-    <div className="flex items-start gap-3">
-      <FaUserCircle className="text-primary-purple md:text-2xl text-xl mt-1" />
-      <div className="flex flex-col items-start gap-1">
-        <p className="md:text-sm text-xs text-gray-700">{text}</p>
+    <div className="flex items-start gap-3 min-h-[44px]">
+      {/* Fixed-size icon */}
+      <div className="flex-shrink-0">
+        <FaUserCircle className="text-primary-purple h-8 w-8 mt-1" />
+      </div>
+
+      {/* Text */}
+      <div className="flex flex-col items-start gap-1 leading-tight">
+        <p className="text-sm text-gray-700 break-words">{text}</p>
         <span className="text-[10px] text-gray-400">{time}</span>
       </div>
     </div>

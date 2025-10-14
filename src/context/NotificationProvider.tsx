@@ -60,32 +60,32 @@ function getHttpBase(): string {
 }
 
 /** Resolve WS base aligned with HTTP base */
-function getWsBase(): string {
-  const raw = (serverUrl || "").trim();
-  const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-  if (/^https?:\/\//i.test(raw)) {
-    // absolute: keep host from raw, use ws(s) scheme
-    try {
-      const u = new URL(raw);
-      return `${proto}//${u.host}${u.pathname.replace(/\/+$/, "")}`;
-    } catch {
-      // fallback to current host if parsing fails
-      return `${proto}//${window.location.host}/${raw.replace(/^\/+/, "")}`.replace(/\/+$/, "");
-    }
-  }
-  // relative: same host + /api
-  return `${proto}//${window.location.host}/${raw.replace(/^\/+/, "")}`.replace(/\/+$/, "");
-}
+// function getWsBase(): string {
+//   const raw = (serverUrl || "").trim();
+//   const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+//   if (/^https?:\/\//i.test(raw)) {
+//     // absolute: keep host from raw, use ws(s) scheme
+//     try {
+//       const u = new URL(raw);
+//       return `${proto}//${u.host}${u.pathname.replace(/\/+$/, "")}`;
+//     } catch {
+//       // fallback to current host if parsing fails
+//       return `${proto}//${window.location.host}/${raw.replace(/^\/+/, "")}`.replace(/\/+$/, "");
+//     }
+//   }
+//   // relative: same host + /api
+//   return `${proto}//${window.location.host}/${raw.replace(/^\/+/, "")}`.replace(/\/+$/, "");
+// }
 
 /** Build WS URL for /ws/notifications/:userId/ and append token as query */
 function buildWsUrl(userId: string | number, token: string): string {
-  const wsBase = getWsBase(); // e.g. wss://host/api
-  let url = `${wsBase}/ws/notifications/${userId}/`;
-  if (token) {
-    url += (url.includes("?") ? "&" : "?") + `token=${encodeURIComponent(token)}`;
-  }
+  const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const host = window.location.host;
+  let url = `${proto}//${host}/ws/notifications/${userId}/`;
+  if (token) url += `?token=${encodeURIComponent(token)}`;
   return url;
 }
+
 
 /** Normalize server payload into minimal shape */
 function normalizePayload(p: any): SimpleNotification {

@@ -50,6 +50,7 @@ const BusinessType: React.FC = () => {
 
   const [loading] = useState(false);
 
+  
   useEffect(() => {
     if (isContractor) {
       setType("sole");
@@ -65,6 +66,8 @@ const BusinessType: React.FC = () => {
     setUsState(registrationData.usState);
 
   }, []);
+
+
 
  const handleContinue: React.MouseEventHandler<HTMLButtonElement> = () => {
   if (!type && !isContractor) {
@@ -84,7 +87,8 @@ const BusinessType: React.FC = () => {
     return;
   }
 
-  // ✅ Map logic
+
+
   let nextType: BizType;
   if (isContractor) {
     nextType = "sole"; 
@@ -112,6 +116,7 @@ const BusinessType: React.FC = () => {
   const TypeCard: React.FC<{ value: BizType; label: string }> = ({ value, label }) => {
     const active = type === value;
     const disabled = isContractor;
+
 
     return (
       <button
@@ -149,6 +154,8 @@ const BusinessType: React.FC = () => {
       </button>
     );
   };
+
+
 
   return (
     <div className="grid md:grid-cols-5 w-full min-h-screen">

@@ -74,6 +74,7 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({
       }));
 
       setReferrals(mapped);
+      // console.log('mapped data', mapped );
     } catch (err: any) {
       console.error("[referrals_list] network error:", err);
       const msg = err?.message || "Network error";

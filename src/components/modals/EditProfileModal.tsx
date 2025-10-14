@@ -188,16 +188,7 @@ const EditProfileModal: React.FC<Props> = ({ open, onClose }) => {
       return;
     }
 
-    // ✅ Company Name validation (skip agar sole ho)
-    if (bizType !== "sole" && companyName.trim()) {
-      const companyRegex = /^[A-Za-z ]+$/;
-      if (!companyRegex.test(companyName.trim())) {
-        toast.error(
-          "Company Name should only contain letters and spaces (no numbers allowed)."
-        );
-        return;
-      }
-    }
+    
 
     // ✅ Build and validate phone
     const dialCode = countries.find((c) => c.code === country)?.dialCode || "";

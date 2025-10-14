@@ -33,6 +33,7 @@ type ReferralDetailType = {
 const ReferralDetail: React.FC = () => {
   const [detail, setDetail] = useState<ReferralDetailType | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+const [activityLogs, setActivityLogs] = useState<any[]>([]);
 
   const { membersFromApi, loading: teamLoading } = useTeamMembersContext();
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
@@ -42,10 +43,10 @@ const ReferralDetail: React.FC = () => {
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  // ✅ Fetch referral detail
   const fetchDetail = useCallback(async () => {
     const token = localStorage.getItem("accessToken");
     const referralId = localStorage.getItem("selectedReferralId");
-
 
     try {
       setLoadingDetail(true);
@@ -58,7 +59,6 @@ const ReferralDetail: React.FC = () => {
         body: JSON.stringify({ referral_id: referralId }),
       });
 
-
       const data = await res.json();
       const detailData = Array.isArray(data.referrals)
         ? data.referrals[0]
@@ -66,17 +66,50 @@ const ReferralDetail: React.FC = () => {
 
       setDetail(detailData);
     } catch (err) {
-      // console.error("Error fetching referral detail:", err);
       toast.error("⚠️ Failed to load referral detail");
     } finally {
       setLoadingDetail(false);
     }
   }, []);
 
-
   useEffect(() => {
     void fetchDetail();
   }, [fetchDetail]);
+
+  
+  // ✅ Fetch referral-specific activity logs
+useEffect(() => {
+  const fetchActivity = async () => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      const id = localStorage.getItem("selectedId");
+
+      const res = await fetch(
+        `${serverUrl}/activity/?referral_id=${encodeURIComponent(id || "")}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: token ? `Bearer ${token}` : "",
+          },
+        }
+      );
+
+      const data = await res.json();
+      console.log("[Activity API Response]:", data);
+      if (res.ok && Array.isArray(data.results)) {
+        setActivityLogs(data.results);
+      }
+    } catch (err) {
+      console.error("Network error (activity):", err);
+    }
+  };
+
+  fetchActivity();
+}, []);
+
+
+
 
   const handleStatusUpdate = async () => {
     if (!detail) return;
@@ -116,7 +149,6 @@ const ReferralDetail: React.FC = () => {
 
       await fetchDetail();
     } catch (err) {
-      // console.error("Status update error:", err);
       toast.error("Network error, please try again");
     } finally {
       setSubmitting(false);
@@ -358,41 +390,47 @@ const ReferralDetail: React.FC = () => {
           </div>
         )}
 
-       {/* Activity Log */}
-        <div className="bg-white rounded-xl sm:rounded-2xl shadow-sm border border-black/5 p-4 sm:p-6">
-          <h3 className="text-base sm:text-lg font-semibold text-primary-blue mb-4">
-            Activity Log
-          </h3>
-          <div className="relative pl-6">
-            <div className="absolute left-[7px] top-0 bottom-0 w-px bg-gray-200"></div>
-            <div className="space-y-6">
-              <div className="relative">
-                <span className="absolute -left-[22px] top-1 h-3 w-3 rounded-full bg-emerald-500"></span>
-                <p className="text-xs text-gray-500">Sep 07, 2025</p>
-                <p className="text-primary-blue font-medium text-sm">
-                  Referral received from <span className="font-semibold">Ali Kazmi</span>
-                </p>
-                <p className="text-xs text-gray-500">10:15 AM</p>
-              </div>
-              <div className="relative">
-                <span className="absolute -left-[22px] top-1 h-3 w-3 rounded-full bg-emerald-500"></span>
-                <p className="text-xs text-gray-500">Sep 08, 2025</p>
-                <p className="text-primary-blue font-medium text-sm">
-                  Assigned to <span className="font-semibold">Usama Kamran</span>
-                </p>
-                <p className="text-xs text-gray-500">02:30 PM</p>
-              </div>
-              <div className="relative">
-                <span className="absolute -left-[22px] top-1 h-3 w-3 rounded-full bg-emerald-500"></span>
-                <p className="text-xs text-gray-500">Sep 09, 2025</p>
-                <p className="text-primary-blue font-medium text-sm">
-                  Follow-up updated by <span className="font-semibold">Fawad</span>
-                </p>
-                <p className="text-xs text-gray-500">11:00 AM</p>
-              </div>
+        {/* Activity Log */}
+        {/* Activity Log */}
+<div className="bg-white rounded-xl sm:rounded-2xl shadow-sm border border-black/5 p-4 sm:p-6">
+  <h3 className="text-base sm:text-lg font-semibold text-primary-blue mb-4">
+    Activity Log
+  </h3>
+  <div className="relative pl-6">
+    <div className="absolute left-[7px] top-0 bottom-0 w-px bg-gray-200"></div>
+    <div className="space-y-6">
+      {activityLogs.length === 0 ? (
+        <p className="text-sm text-gray-500">No activity yet.</p>
+      ) : (
+        activityLogs.map((act) => {
+          const dateObj = new Date(act.created_at);
+          const date = dateObj.toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          });
+          const time = dateObj.toLocaleTimeString("en-GB", {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+
+          return (
+            <div key={act.id} className="relative">
+              <span className="absolute -left-[22px] top-1 h-3 w-3 rounded-full bg-emerald-500"></span>
+              <p className="text-xs text-gray-500">{date}</p>
+              <p className="text-primary-blue font-medium text-sm">
+                {act.title}
+              </p>
+              <p className="text-xs text-gray-500">{act.body}</p>
+              <p className="text-xs text-gray-400 mt-1">{time}</p>
             </div>
-          </div>
-        </div>
+          );
+        })
+      )}
+    </div>
+  </div>
+</div>
+
       </div>
 
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar />

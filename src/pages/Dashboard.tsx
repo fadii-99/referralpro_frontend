@@ -13,7 +13,10 @@ const Dashboard: React.FC = () => {
 
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [loadingStats, setLoadingStats] = useState(false);
+  const [activityLogs, setActivityLogs] = useState<any[]>([]);
+  const [loadingActivity, setLoadingActivity] = useState(false);
 
+  // ✅ Fetch Dashboard Stats
   useEffect(() => {
     const fetchDashboard = async () => {
       setLoadingStats(true);
@@ -28,13 +31,7 @@ const Dashboard: React.FC = () => {
         });
 
         const data = await res.json();
-        // console.log("[Dashboard API Response]:", data);
-
-        if (res.ok) {
-          setDashboardData(data);
-        } else {
-          // console.error("Dashboard API error:", data);
-        }
+        if (res.ok) setDashboardData(data);
       } catch (err) {
         console.error("Network error:", err);
       } finally {
@@ -45,23 +42,48 @@ const Dashboard: React.FC = () => {
     fetchDashboard();
   }, []);
 
-  // ✅ Dummy Recent Activities
-  const dummyRecent = [
-    { text: "New referral created by Sarah", time: "2 hours ago" },
-    { text: "Referral accepted by David", time: "3 hours ago" },
-    { text: "Referral completed by Emily", time: "5 hours ago" },
-    { text: "Points cashed out by John", time: "1 day ago" },
-    { text: "New user joined your company", time: "2 days ago" },
-  ];
+  // ✅ Fetch recent activity logs
+  useEffect(() => {
+    const fetchActivity = async () => {
+      try {
+        setLoadingActivity(true);
+        const token = localStorage.getItem("accessToken");
+        const res = await fetch(`${serverUrl}/all_activity/`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: token ? `Bearer ${token}` : "",
+          },
+        });
+
+        const data = await res.json();
+        console.log("[Recent Activity API Response]:", data);
+
+        if (res.ok && Array.isArray(data.results)) {
+          setActivityLogs(data.results);
+        }
+      } catch (err) {
+        console.error("Network error (activity):", err);
+      } finally {
+        setLoadingActivity(false);
+      }
+    };
+
+    fetchActivity();
+  }, []);
 
   return (
     <div className="sm:p-8 p-4 flex flex-col gap-8">
       {/* Top Section */}
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-semibold text-gray-500">
-          Welcome Back 👋 <br />
+          Welcome 👋 <br />
           <span className="text-3xl font-semibold text-primary-blue">
-           {loading ? "Loading..." : (user?.company_name ? user.company_name : user?.name)}
+            {loading
+              ? "Loading..."
+              : user?.company_name
+              ? user.company_name
+              : user?.name}
           </span>
         </h2>
       </div>
@@ -83,7 +105,9 @@ const Dashboard: React.FC = () => {
         <DashboardCard
           title="Total Points Allocated"
           value={
-            loadingStats ? "..." : `$${dashboardData?.total_points_allocated ?? 0}`
+            loadingStats
+              ? "..."
+              : `$${dashboardData?.total_points_allocated ?? 0}`
           }
         />
         <DashboardCard
@@ -94,7 +118,9 @@ const Dashboard: React.FC = () => {
         />
         <DashboardCard
           title="Missed Opportunity"
-          value={loadingStats ? "..." : `$${dashboardData?.missed_opportunity ?? 0}`}
+          value={
+            loadingStats ? "..." : `$${dashboardData?.missed_opportunity ?? 0}`
+          }
         />
       </div>
 
@@ -105,7 +131,7 @@ const Dashboard: React.FC = () => {
           <ReferralTrendsChart />
         </div>
 
-        {/* Recent Activity (Dummy Data) */}
+        {/* Recent Activity */}
         <div className="bg-white p-6 rounded-xl shadow-sm md:mt-0 mt-6 flex flex-col">
           <h3 className="text-lg font-semibold text-primary-blue mb-6">
             Recent Activity
@@ -113,9 +139,35 @@ const Dashboard: React.FC = () => {
 
           <SimpleBar style={{ maxHeight: 450 }} autoHide={true}>
             <div className="space-y-6 pr-1">
-              {dummyRecent.map((act, idx) => (
-                <RecentActivityRow key={idx} text={act.text} time={act.time} />
-              ))}
+              {loadingActivity ? (
+                <p className="text-sm text-gray-500">Loading...</p>
+              ) : activityLogs.length === 0 ? (
+                <p className="text-sm text-gray-500">No recent activity.</p>
+              ) : (
+                activityLogs.map((act, idx) => {
+                  const dateObj = act.created_at
+                    ? new Date(act.created_at)
+                    : null;
+                  const formattedTime = dateObj
+                    ? `${dateObj.toLocaleDateString("en-GB", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })} ${dateObj.toLocaleTimeString("en-GB", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}`
+                    : "";
+
+                  return (
+                    <RecentActivityRow
+                      key={idx}
+                      text={`${act.title} — ${act.body}`}
+                      time={formattedTime}
+                    />
+                  );
+                })
+              )}
             </div>
           </SimpleBar>
         </div>
