@@ -11,17 +11,21 @@ type ApiNotification = {
   event_type?: string | null;
 };
 
-type ApiResponse = {
-  success: boolean;
-  notifications: ApiNotification[];
-  pagination: {
-    page: number;
-    page_size: number;
-    total_count: number;
-    unread_count: number;
-    has_more: boolean;
-  };
-};
+
+
+// type ApiResponse = {
+//   success: boolean;
+//   notifications: ApiNotification[];
+//   pagination: {
+//     page: number;
+//     page_size: number;
+//     total_count: number;
+//     unread_count: number;
+//     has_more: boolean;
+//   };
+// };
+
+
 
 type Row = {
   id: string;
@@ -53,14 +57,14 @@ const fmtTime = (iso: string) => {
   }
 };
 
-// client-side filter: allow any event_type that contains "referral" (case-insensitive)
+
 const isReferralRow = (n: ApiNotification) =>
   String(n?.event_type || "").toLowerCase().includes("referral");
 
 const Notifications: React.FC = () => {
   const [rows, setRows] = useState<Row[]>([]);
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(50); // per page
+  const [pageSize] = useState(50);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -71,7 +75,6 @@ const Notifications: React.FC = () => {
     [totalCount, pageSize]
   );
 
-  // ---- FIXED: fetchPage works with VITE_SERVER_URL="/api" or absolute ----
   const fetchPage = async (pageNum: number) => {
     const token = getAccessToken();
     if (!token) {
@@ -85,7 +88,6 @@ const Notifications: React.FC = () => {
 
     try {
       const rawBase = (serverUrl || "").trim();
-      // if absolute (http/https), use as-is; else join with current origin
       const apiBase = /^https?:\/\//i.test(rawBase)
         ? rawBase.replace(/\/+$/, "")
         : (window.location.origin + "/" + rawBase.replace(/^\/+/, "")).replace(/\/+$/, "");
@@ -102,7 +104,6 @@ const Notifications: React.FC = () => {
         },
       });
 
-      // safe body reader (json → text fallback)
       const ct = res.headers.get("content-type") || "";
       const readBody = async () => {
         if (ct.includes("application/json")) {
@@ -128,18 +129,27 @@ const Notifications: React.FC = () => {
       }
 
       const body = await readBody();
-      const data = (body && typeof body === "object" ? body : { notifications: [], pagination: {} }) as ApiResponse;
+      const data =
+        body && typeof body === "object"
+          ? body
+          : { notifications: [], pagination: {} };
 
-      // referral-only
-      const onlyReferral = (Array.isArray(data.notifications) ? data.notifications : []).filter(isReferralRow);
+      // ✅ support both "notifications" and "results" keys
+      const allNotifications = Array.isArray((data as any).notifications)
+        ? (data as any).notifications
+        : Array.isArray((data as any).results)
+        ? (data as any).results
+        : [];
+
+      // referral-only filter
+      const onlyReferral = allNotifications.filter(isReferralRow);
       const mapped = onlyReferral.map(normalize);
 
-      setRows(mapped); // replace page (no append)
+      setRows(mapped);
 
-      // IMPORTANT: server total_count is for ALL events; show count for filtered page to keep UI sane
       const fallbackPageCount = mapped.length;
-      setTotalCount(Number(data.pagination?.total_count) || fallbackPageCount);
-      setPage(Number(data.pagination?.page) || pageNum);
+      setTotalCount(Number((data as any).pagination?.total_count) || fallbackPageCount);
+      setPage(Number((data as any).pagination?.page) || pageNum);
     } catch (e: any) {
       setError(e?.message || "Failed to load notifications");
       setRows([]);
@@ -153,7 +163,6 @@ const Notifications: React.FC = () => {
   const onPageChange = (p: number) => {
     if (p === page) return;
     void fetchPage(p);
-    // optional UX: scroll to top of list
     try {
       document.querySelector("#notifications-root")?.scrollIntoView({ behavior: "smooth" });
     } catch {}
@@ -161,40 +170,35 @@ const Notifications: React.FC = () => {
 
   useEffect(() => {
     void fetchPage(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+
 
   return (
     <div id="notifications-root" className="sm:p-6 p-3">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="md:text-2xl text-xl font-semibold text-primary-blue sm:pb-4 pb-0">
           Notifications
         </h2>
       </div>
 
-      {/* Card */}
       <div className="mt-4 bg-white rounded-2xl shadow-sm border border-black/5 p-4 sm:p-5">
-        {/* Initial loader */}
         {initialLoading && (
           <div className="py-10 flex items-center justify-center">
             <SmallLoader />
           </div>
         )}
 
-        {/* Error */}
         {!initialLoading && error && (
           <div className="px-2 py-3 text-sm text-red-600">{error}</div>
         )}
 
-        {/* Empty */}
         {!initialLoading && !error && rows.length === 0 && (
           <div className="px-2 py-3 text-sm text-gray-500">
             No notifications found.
           </div>
         )}
 
-        {/* List */}
         {!initialLoading && !error && rows.length > 0 && (
           <>
             <ul className="space-y-3">
@@ -230,7 +234,8 @@ const Notifications: React.FC = () => {
 
             <div className="mt-6 flex items-center justify-between">
               <span className="text-xs text-gray-500">
-                Showing {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, totalCount)} of {totalCount}
+                Showing {(page - 1) * pageSize + 1}–
+                {Math.min(page * pageSize, totalCount)} of {totalCount}
               </span>
 
               <Pagination

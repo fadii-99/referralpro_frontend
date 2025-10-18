@@ -145,7 +145,7 @@ const Welcome: React.FC = () => {
           <p className="mt-8 text-center text-xs text-gray-600">
             Already have an account?{" "}
             <Link
-              to="/Login"
+              to="/"
               className="text-primary-purple font-semibold underline-offset-2 inline-block hover:scale-[103%] duration-300"
             >
               Login

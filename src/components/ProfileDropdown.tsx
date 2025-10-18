@@ -1,12 +1,14 @@
+// src/components/ProfileDropdown.tsx
 import React, { useEffect, useRef, useState } from "react";
-import { FiSettings, FiCreditCard, FiLogOut } from "react-icons/fi";
+import { FiSettings, FiCreditCard, FiLogOut, FiChevronLeft } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import { useUserContext } from "../context/UserProvider";
 import SmallLoader from "./SmallLoader";
 
 const ProfileDropdown: React.FC<{ className?: string }> = ({ className = "" }) => {
   const [open, setOpen] = useState(false);
-  const wrapperRef = useRef<HTMLDivElement>(null); // ✅ single ref wrapper
+  const [openSettings, setOpenSettings] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { user, loading, loadUser } = useUserContext();
 
@@ -16,17 +18,23 @@ const ProfileDropdown: React.FC<{ className?: string }> = ({ className = "" }) =
 
   const goProfile = () => {
     setOpen(false);
+    setOpenSettings(false);
     navigate("/Dashboard/Profile");
   };
 
-  // ✅ close on outside click + ESC
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
       const el = wrapperRef.current;
-      if (el && !el.contains(e.target as Node)) setOpen(false);
+      if (el && !el.contains(e.target as Node)) {
+        setOpen(false);
+        setOpenSettings(false);
+      }
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        setOpen(false);
+        setOpenSettings(false);
+      }
     };
     document.addEventListener("mousedown", onDown, { passive: true });
     document.addEventListener("keydown", onKey);
@@ -39,7 +47,8 @@ const ProfileDropdown: React.FC<{ className?: string }> = ({ className = "" }) =
   const handleLogout = () => {
     localStorage.removeItem("accessToken");
     setOpen(false);
-    navigate("/Login");
+    setOpenSettings(false);
+    navigate("/");
   };
 
   const Item = ({
@@ -65,13 +74,28 @@ const ProfileDropdown: React.FC<{ className?: string }> = ({ className = "" }) =
     user?.avatar ||
     "https://referal-pro-bucket.s3.amazonaws.com/media/profiles/Capture.PNG";
 
+  const openSettingsPanel = () => {
+    setOpen(false);
+    setOpenSettings(true);
+  };
+
+  // 🔗 Always open route in a NEW TAB + close both dropdowns
+  const openInNewTab = (path: string) => {
+    setOpen(false);
+    setOpenSettings(false);
+    window.open(path, "_blank", "noopener,noreferrer");
+  };
+
   return (
     <div className={`relative ${className}`} ref={wrapperRef}>
       <button
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          setOpen((v) => !v);
+          setOpenSettings(false);
+        }}
         className="h-10 w-10 overflow-hidden rounded-full ring-2 ring-white shadow-sm border border-black/5"
       >
         {loading ? (
@@ -117,13 +141,57 @@ const ProfileDropdown: React.FC<{ className?: string }> = ({ className = "" }) =
 
           {!loading && (
             <div className="space-y-1 pt-4">
-              <Item icon={<FiSettings />} label="Setting" />
+              <Item icon={<FiSettings />} label="Setting" onClick={openSettingsPanel} />
               <div className="h-px bg-gray-200 my-2" />
               <Item icon={<FiCreditCard />} label="Subscription & Billing" />
               <div className="h-px bg-gray-200 my-2" />
               <Item icon={<FiLogOut />} label="Logout" onClick={handleLogout} />
             </div>
           )}
+        </div>
+      )}
+
+      {openSettings && (
+        <div className="fixed top-0 right-0 h-screen w-80 bg-white border-l border-black/5 shadow-2xl z-[60]">
+          <div className="flex items-center gap-2 p-4 border-b border-gray-100">
+            <button
+              type="button"
+              onClick={() => {
+                setOpenSettings(false);
+                setOpen(true);
+              }}
+              className="p-2 -ml-2 rounded-lg hover:bg-gray-100"
+              aria-label="Back"
+            >
+              <FiChevronLeft className="text-xl text-[#0b0d3b]" />
+            </button>
+            <FiSettings className="text-primary-purple" />
+            <span className="font-semibold text-[#0b0d3b] text-sm">Setting</span>
+          </div>
+
+          <div className="p-4 space-y-2">
+            <button
+              type="button"
+              onClick={() => openInNewTab("/Terms")}
+              className="w-full text-left px-3 py-3 rounded-lg hover:bg-gray-50 text-sm font-medium text-[#0b0d3b]"
+            >
+              Terms & Conditions
+            </button>
+            <button
+              type="button"
+              onClick={() => openInNewTab("/Privacy")}
+              className="w-full text-left px-3 py-3 rounded-lg hover:bg-gray-50 text-sm font-medium text-[#0b0d3b]"
+            >
+              Privacy Policy
+            </button>
+            <button
+              type="button"
+              onClick={() => openInNewTab("/FAQ")}
+              className="w-full text-left px-3 py-3 rounded-lg hover:bg-gray-50 text-sm font-medium text-[#0b0d3b]"
+            >
+              FAQ
+            </button>
+          </div>
         </div>
       )}
     </div>

@@ -76,10 +76,12 @@ const Team: React.FC = () => {
               No team members found.
             </div>
           ) : (
-            current.map((m) => (
+            current.map((m, idx) => (
               <TeamRow
                 key={m.id}
                 member={m}
+                /* Display-only index starting at 1, continuous across pages */
+                displayId={start + idx + 1}
                 onEdit={(mem) => {
                   setSelected(mem);
                   setOpenEdit(true);

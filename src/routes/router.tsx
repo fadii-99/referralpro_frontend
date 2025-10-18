@@ -42,13 +42,14 @@ const AdminReviews= lazy(() => import("./../adminPages/AdminReviews.tsx")); // ð
 
 const Terms = lazy(() => import("./../pages/Terms"));
 const Privacy = lazy(() => import("./../pages/Privacy"));
+const FAQ = lazy(() => import("./../pages/FAQ"));
 
 
 
 const router = createBrowserRouter([
   // Public Routes
   {
-    path: "/",
+    path: "/Signup",
     element: (
       <Suspense fallback={<Loader />}>
         <Welcome />
@@ -56,7 +57,7 @@ const router = createBrowserRouter([
     ),
   },
   {
-    path: "/Login",
+    path: "/",
     element: (
       <Suspense fallback={<Loader />}>
         <Login />
@@ -166,7 +167,16 @@ const router = createBrowserRouter([
       <Privacy />
     </Suspense>
   ),
-},
+}
+,
+  {
+    path: "/FAQ",
+    element: (
+      <Suspense fallback={<Loader />}>
+        <FAQ />
+      </Suspense>
+    ),
+  },
 
 
   // ðŸ”’ Private Dashboard Routes

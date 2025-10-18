@@ -37,14 +37,15 @@ const StatusPill: React.FC<{ status: string }> = ({ status }) => {
 
 const TeamRow: React.FC<{
   member: TeamMember;
+  displayId?: number; // display-only index (1..n)
   onEdit?: (m: TeamMember) => void;
   onDelete?: (m: TeamMember) => void;
-}> = ({ member, onEdit, onDelete }) => {
+}> = ({ member, displayId, onEdit, onDelete }) => {
   return (
     <div className="grid grid-cols-[0.6fr_2fr_1.8fr_1.2fr_1.2fr_1fr] min-w-[650px] items-center bg-white rounded-2xl md:px-6 px-3 py-3 border border-black/5 shadow-sm">
-      {/* ID */}
+      {/* ID (display-only) */}
       <div className="font-medium text-gray-700 md:text-sm text-xs">
-        {member.id}
+        {displayId ?? member.id}
       </div>
 
       {/* Name + Avatar */}
@@ -80,7 +81,7 @@ const TeamRow: React.FC<{
           type="button"
           className="text-primary-purple hover:opacity-80"
           aria-label="Edit"
-          onClick={() => onEdit?.(member)}
+          onClick={() => onEdit?.(member)} // uses real member.id
         >
           <FiEdit2 />
         </button>
@@ -88,7 +89,7 @@ const TeamRow: React.FC<{
           type="button"
           className="text-primary-purple hover:opacity-80"
           aria-label="Delete"
-          onClick={() => onDelete?.(member)}
+          onClick={() => onDelete?.(member)} // uses real member.id
         >
           <FiTrash2 />
         </button>

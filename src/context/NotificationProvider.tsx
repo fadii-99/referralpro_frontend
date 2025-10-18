@@ -42,8 +42,8 @@ const warn = (...a: any[]) => console.warn(TAG, ...a);
 const err  = (...a: any[]) => console.error(TAG, ...a);
 
 // storage helpers
-const getAccessToken = () => localStorage.getItem("accessToken") || "";
-const getUserId      = () => localStorage.getItem("userId") || "";
+const getAccessToken = () => localStorage.getItem("accessToken");
+const getUserId      = () => localStorage.getItem("userId");
 
 // ✅ allow any event_type that contains "referral" (case-insensitive)
 const matchesReferral = (obj: any) => {
@@ -59,24 +59,6 @@ function getHttpBase(): string {
   return (window.location.origin + "/" + raw.replace(/^\/+/, "")).replace(/\/+$/, "");
 }
 
-/** Resolve WS base aligned with HTTP base */
-// function getWsBase(): string {
-//   const raw = (serverUrl || "").trim();
-//   const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-//   if (/^https?:\/\//i.test(raw)) {
-//     // absolute: keep host from raw, use ws(s) scheme
-//     try {
-//       const u = new URL(raw);
-//       return `${proto}//${u.host}${u.pathname.replace(/\/+$/, "")}`;
-//     } catch {
-//       // fallback to current host if parsing fails
-//       return `${proto}//${window.location.host}/${raw.replace(/^\/+/, "")}`.replace(/\/+$/, "");
-//     }
-//   }
-//   // relative: same host + /api
-//   return `${proto}//${window.location.host}/${raw.replace(/^\/+/, "")}`.replace(/\/+$/, "");
-// }
-
 /** Build WS URL for /ws/notifications/:userId/ and append token as query */
 function buildWsUrl(userId: string | number, token: string): string {
   const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -85,7 +67,6 @@ function buildWsUrl(userId: string | number, token: string): string {
   if (token) url += `?token=${encodeURIComponent(token)}`;
   return url;
 }
-
 
 /** Normalize server payload into minimal shape */
 function normalizePayload(p: any): SimpleNotification {
@@ -102,7 +83,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode; alertOn
   alertOnIncoming = true,
 }) => {
   const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const [notifications, setNotifications] = useState<SimpleNotification[]>([]);
   const [hasNew, setHasNew] = useState(false);
@@ -123,27 +104,39 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode; alertOn
       setLoading(true);
       setError(null);
       try {
-        const base = getHttpBase(); // handles "/api" or absolute
+        const base = getHttpBase();
         const page = String(opts?.page ?? 1);
         const page_size = String(opts?.page_size ?? 50);
         const unread_only = typeof opts?.unread_only === "boolean" ? `&unread_only=${String(opts.unread_only)}` : "";
         const url = `${base}/notifications/?page=${encodeURIComponent(page)}&page_size=${encodeURIComponent(page_size)}${unread_only}`;
 
-        log("REST GET", url);
+        // log("🔹 REST GET:", url);
+
         const res = await fetch(url, {
           headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
         });
 
+        // log("🔹 REST STATUS:", res.status, res.statusText);
+
         const ct = res.headers.get("content-type") || "";
         const readBody = async () => {
           if (ct.includes("application/json")) {
-            try { return await res.json(); } catch {}
+            try {
+              return await res.json();
+            } catch (e) {
+              err("❌ JSON parse error:", e);
+            }
           }
-          try { return await res.text(); } catch { return null; }
+          try {
+            return await res.text();
+          } catch {
+            return null;
+          }
         };
 
         if (!res.ok) {
           const body = await readBody();
+          warn("⚠️ Non-OK response body:", body);
           const msg =
             (body && typeof body === "object" && (body.error || body.detail || body.message)) ||
             (typeof body === "string" && body) ||
@@ -153,11 +146,21 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode; alertOn
         }
 
         const body = await readBody();
-        const data = (body && typeof body === "object" ? body : { notifications: [] }) as any;
-        const raw: any[] = Array.isArray(data?.notifications) ? data.notifications : [];
+        // log("📦 RAW BODY:", body);
 
-        // ✅ client-side filter to only "referral" event types
+        const data = (body && typeof body === "object" ? body : { notifications: [] }) as any;
+
+        const raw: any[] = Array.isArray(data?.notifications)
+          ? data.notifications
+          : Array.isArray((data as any)?.results)
+          ? (data as any).results
+          : [];
+
+        // log("📋 RAW notifications length:", raw.length);
+        // log("📋 RAW notifications list:", raw);
+
         const onlyReferral = raw.filter(matchesReferral);
+        // log("🎯 Filtered referral notifications:", onlyReferral.length, onlyReferral);
 
         const mapped: SimpleNotification[] = onlyReferral.map((n) => ({
           id: n.id,
@@ -165,8 +168,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode; alertOn
           time: n.created_at || new Date().toISOString(),
         }));
 
+        // log("✅ Final mapped notifications:", mapped);
+
         setNotifications(mapped.slice(0, CAP));
-        log(`REST mapped referral notifications: ${mapped.length}`);
+        // log(`REST mapped referral notifications: ${mapped.length}`);
       } catch (e: any) {
         const msg = e?.message || "Network error";
         setError(msg);
@@ -220,8 +225,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode; alertOn
     cleanupWs();
     manualCloseRef.current = false;
 
-    const wsUrl = buildWsUrl(userId, token); // <-- token passed (works with /api)
-    log("WS connecting →", wsUrl);
+    const wsUrl = buildWsUrl(userId, token);
+    log("🔌 WS connecting →", wsUrl);
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
@@ -229,12 +234,14 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode; alertOn
       setConnected(true);
       setError(null);
       backoffRef.current = 1000;
-      try { ws.send(JSON.stringify({ type: "ping", ts: Date.now() })); } catch {}
-      log("WS connected");
+      try {
+        ws.send(JSON.stringify({ type: "ping", ts: Date.now() }));
+      } catch {}
+      // log("✅ WS connected");
     };
 
     ws.onmessage = (evt) => {
-      log("WS message (raw):", evt.data);
+      log("💬 WS message (raw):", evt.data);
 
       let payload: any;
       try {
@@ -243,21 +250,35 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode; alertOn
         return; // ignore non-JSON
       }
 
-      // ✅ only process “referral” event types
-      if (!matchesReferral(payload)) return;
+      // log("💡 WS parsed payload:", payload);
+
+      if (!matchesReferral(payload)) {
+        log("⛔ Ignored non-referral event:", payload.event_type || payload.type);
+        return;
+      }
 
       if (alertOnIncoming) {
-        const txt = [payload?.title, payload?.message, payload?.event].filter(Boolean).join(" — ") || "Notification";
-        try { window.alert(txt); } catch {}
+        const txt = [payload?.title, payload?.message, payload?.event]
+          .filter(Boolean)
+          .join(" — ") || "Notification";
+        try {
+          window.alert(txt);
+        } catch {}
       }
 
       const item = normalizePayload(payload);
-      setNotifications((prev) => [item, ...prev].slice(0, CAP));
+      // log("🆕 New notification:", item);
+
+      setNotifications((prev) => {
+        const updated = [item, ...prev].slice(0, CAP);
+        // log("📥 Updated notification list:", updated);
+        return updated;
+      });
       setHasNew(true);
     };
 
     ws.onerror = (e) => {
-      warn("WS error:", e);
+      warn("⚠️ WS error:", e);
       setConnected(false);
     };
 
@@ -265,26 +286,30 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode; alertOn
       console.groupCollapsed("[WS close]");
       console.log("reason:", e.reason);
       console.groupEnd();
-
       setConnected(false);
       if (!manualCloseRef.current) scheduleReconnect();
     };
   }, [cleanupWs, scheduleReconnect, alertOnIncoming]);
 
+  
+
   const disconnectSocket = useCallback(() => {
     manualCloseRef.current = true;
-    log("WS manual disconnect");
+    // log("🔻 WS manual disconnect");
     cleanupWs();
     setConnected(false);
   }, [cleanupWs]);
 
   const acknowledgeNew = useCallback(() => setHasNew(false), []);
 
+
+
   useEffect(() => {
     connectSocket();
     return () => disconnectSocket();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+
 
   const value = useMemo(
     () => ({
