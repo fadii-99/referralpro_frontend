@@ -104,16 +104,16 @@ const makeAvatarUrl = (fullName: string) => {
         avatar: data?.user?.image || makeAvatarUrl(data?.user?.full_name),
 
 
-        company_name: data?.business_info?.company_name || "",
-        address1: data?.business_info?.address1 || "",
-        address2: data?.business_info?.address2 || "",
-        city: data?.business_info?.city || "",
-        us_state: data?.business_info?.us_state || "",
-        post_code: data?.business_info?.post_code || "",
-        website: data?.business_info?.website || "",
-        industry: data?.business_info?.industry || "",
-        employees: data?.business_info?.employees || "",
-        biz_type: data?.business_info?.biz_type || "",
+        company_name: data?.user?.business_info?.company_name || "",
+        address1: data?.user?.business_info?.address1 || "",
+        address2: data?.user?.business_info?.address2 || "",
+        city: data?.user?.business_info?.city || "",
+        us_state: data?.user?.business_info?.us_state || "",
+        post_code: data?.user?.business_info?.post_code || "",
+        website: data?.user?.business_info?.website || "",
+        industry: data?.user?.business_info?.industry || "",
+        employees: data?.user?.business_info?.employees || "",
+        biz_type: data?.user?.business_info?.biz_type || "",
       };
 
       localStorage.setItem('userId', mapped.id);
