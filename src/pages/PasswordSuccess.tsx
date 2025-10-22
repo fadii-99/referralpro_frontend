@@ -38,7 +38,7 @@ const PasswordSuccess: React.FC = () => {
               Your password has been changed successfully.
             </p>
 
-            <Button text='Back to login'  onClick={() => navigate("/login")} />
+            <Button text='Back to login'  onClick={() => navigate("/")} />
           </div>
         </div>
       </div>
