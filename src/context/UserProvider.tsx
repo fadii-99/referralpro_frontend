@@ -117,6 +117,7 @@ const makeAvatarUrl = (fullName: string) => {
       };
 
       localStorage.setItem('userId', mapped.id);
+      localStorage.setItem("userBizType", (mapped.biz_type || "").trim().toLowerCase());
 
       setUser(mapped);
     } catch (err) {
