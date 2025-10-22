@@ -49,6 +49,24 @@ const FAQ = lazy(() => import("./../pages/FAQ"));
 const router = createBrowserRouter([
   // Public Routes
   {
+  path: "/assets/apple.png",
+  element: (
+    <img
+      src="/src/assets/apple.png"
+      alt="Apple Badge"
+      style={{
+        width: "auto",
+        height: "100vh",
+        objectFit: "contain",
+        display: "block",
+        margin: "0 auto",
+        backgroundColor: 'white'
+      }}
+    />
+  ),
+},
+
+  {
     path: "/Signup",
     element: (
       <Suspense fallback={<Loader />}>
