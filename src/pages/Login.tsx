@@ -56,6 +56,12 @@ const Login: React.FC = () => {
         // credentials: "include", 
       });
 
+
+        if (res.status === 429 || res.status === 502 || res.status === 503) {
+      toast.error("Server is busy, please try again.");
+      return;
+    }
+
       // console.log("[login] status:", res.status, res.statusText);
       const headersDump: Record<string, string> = {};
       res.headers.forEach((v, k) => (headersDump[k] = v));

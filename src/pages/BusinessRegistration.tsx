@@ -30,6 +30,8 @@ const BusinessRegistration: React.FC = () => {
   const [companyName, setCompanyName] = useState(registrationData.companyName || "");
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
 
   // ✅ Normalize helper
   const normalize = (str: string) =>
@@ -99,6 +101,7 @@ const BusinessRegistration: React.FC = () => {
   }
 
   try {
+     setSubmitting(true);
     const res = await fetch(`${serverUrl}/auth/check_email/`, {
       method: "POST",
       headers: {
@@ -121,14 +124,20 @@ const BusinessRegistration: React.FC = () => {
       navigate("/BusinessType");
     } else if (res.status === 400) {
       toast.error("Email is already registered.");
-    } else {
+    }  else if (res.status === 429 || res.status === 504 || res.status === 502 || res.status === 503) {
+      toast.error("Server is busy, please try again.");
+    } 
+    else {
       const errTxt = await res.text();
       toast.error(`Failed (${res.status}): ${errTxt || "Unknown error"}`);
     }
+
   } catch (err) {
     console.error(err);
     toast.error("Network error. Please try again.");
-  }
+  } finally {
+  setSubmitting(false); 
+}
 };
 
 
@@ -347,7 +356,13 @@ const BusinessRegistration: React.FC = () => {
               )}
             </div>
 
-            <Button text="Next : Business Type Selection" onClick={handleContinue} />
+              <Button
+                text="Next : Business Type Selection"
+                onClick={handleContinue}
+                loading={submitting}          
+                disabled={submitting}          
+              />
+
           </div>
         </div>
       </div>

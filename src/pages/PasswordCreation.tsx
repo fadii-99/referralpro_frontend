@@ -51,6 +51,8 @@ const PasswordCreation: React.FC = () => {
     }
   }, [showAgreement]);
 
+
+
   const handleConfirm: React.MouseEventHandler<HTMLButtonElement> = () => {
     if (!password.trim() || !confirmPassword.trim()) {
       toast.error("Please fill out all fields.");
@@ -77,6 +79,7 @@ const PasswordCreation: React.FC = () => {
     navigate("/SubscriptionPlan");
   };
 
+  
   return (
     <div className="grid md:grid-cols-5 w-full min-h-screen">
       <SideDesign />

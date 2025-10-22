@@ -45,10 +45,11 @@ const CompanyInformation: React.FC = () => {
   const [city, setCity] = useState(registrationData.city);
   const [postCode, setPostCode] = useState(registrationData.postCode);
   const [website, setWebsite] = useState(registrationData.website);
+  const [submitting, setSubmitting] = useState(false);
 
   // Phone + Country
   const [country, setCountry] = useState("US");
-  const [localPhone, setLocalPhone] = useState(""); // User entered part
+  const [localPhone, setLocalPhone] = useState(""); 
   const [openDropdown, setOpenDropdown] = useState(false);
 
   // Sync registration data
@@ -68,7 +69,7 @@ const CompanyInformation: React.FC = () => {
     }
   }, [registrationData]);
 
-  // ✅ CHANGED: made async to await API call
+
   const handleContinue: React.MouseEventHandler<HTMLButtonElement> = async () => {
     if (
       !address1.trim() ||
@@ -135,7 +136,8 @@ const CompanyInformation: React.FC = () => {
       return;
     }
 
-    // ✅ ADDED: server-side phone check BEFORE saving & navigating
+
+    setSubmitting(true);
     try {
       const res = await fetch(`${serverUrl}/auth/check_phone/`, {
         method: "POST",
@@ -162,14 +164,19 @@ const CompanyInformation: React.FC = () => {
       } else if (res.status === 400) {
         
         toast.error("Phone number is already in use");
-      } else {
+      }  else if (res.status === 429 || res.status === 504 || res.status === 502 || res.status === 503) {
+            toast.error("Server is busy, please try again.");
+          } 
+        else {
         const errTxt = await res.text();
         toast.error(`Phone check failed (${res.status}): ${errTxt || "Unknown error"}`);
       }
     } catch (err) {
       console.error(err);
       toast.error("Network error while checking phone. Please try again.");
-    }
+    } finally {
+    setSubmitting(false); // 
+  }
   };
 
   return (
@@ -354,7 +361,13 @@ const CompanyInformation: React.FC = () => {
               </div>
             </div>
 
-            <Button text="Next : Create Your Password" onClick={handleContinue} />
+           <Button
+              text="Next : Create Your Password"
+              onClick={handleContinue}
+              loading={submitting}    
+              disabled={submitting}  
+            />
+
           </div>
         </div>
       </div>

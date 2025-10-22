@@ -4,10 +4,12 @@ interface ButtonProps {
   text: string;
   onClick?: React.MouseEventHandler<HTMLButtonElement>;
   disabled?: boolean;
-  py?: string;                 // e.g. "py-2 sm:py-3"
-  px?: string;                 // e.g. "px-6"
-  fullWidth?: boolean;         // <- NEW (defaults to true)
-  mt?: string;                 // <- optional margin-top, default "mt-6"
+  loading?: boolean;                // NEW
+  loaderPosition?: "replace" | "left" | "right"; // NEW
+  py?: string;
+  px?: string;
+  fullWidth?: boolean;
+  mt?: string;
   className?: string;
 }
 
@@ -15,9 +17,11 @@ const Button: React.FC<ButtonProps> = ({
   text,
   onClick,
   disabled = false,
+  loading = false,
+  loaderPosition = "replace",
   py,
   px,
-  fullWidth = true,            // keep old behavior
+  fullWidth = true,
   mt = "mt-6",
   className = "",
 }) => {
@@ -29,16 +33,52 @@ const Button: React.FC<ButtonProps> = ({
 
   const paddingY = py ?? "py-4 sm:py-5";
   const paddingX = px ?? "px-6";
-  const width    = fullWidth ? "w-full" : "w-auto";
+  const width = fullWidth ? "w-full" : "w-auto";
+
+  const Dot = ({ delay }: { delay: string }) => (
+    <span
+      className="h-1.5 w-1.5 rounded-full bg-white/90 animate-bounce"
+      style={{ animationDelay: delay }}
+    />
+  );
+
+  const Loader = (
+    <span className="inline-flex items-center gap-1 py-2" aria-hidden="true">
+      <Dot delay="0ms" />
+      <Dot delay="150ms" />
+      <Dot delay="300ms" />
+    </span>
+  );
+
+  const content =
+    loading && loaderPosition === "replace" ? (
+      <>
+        <span className="sr-only">Loading</span>
+        {Loader}
+      </>
+    ) : loaderPosition === "left" && loading ? (
+      <>
+        {Loader}
+        <span className="ml-2">{text}</span>
+      </>
+    ) : loaderPosition === "right" && loading ? (
+      <>
+        <span className="mr-2">{text}</span>
+        {Loader}
+      </>
+    ) : (
+      text
+    );
 
   return (
     <button
       type="button"
       onClick={onClick}
-      disabled={disabled}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
       className={`${base} ${mt} ${paddingY} ${paddingX} ${width} ${className}`.trim()}
     >
-      {text}
+      {content}
     </button>
   );
 };

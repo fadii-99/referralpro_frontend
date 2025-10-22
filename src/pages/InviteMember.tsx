@@ -39,7 +39,6 @@ const InviteMember: React.FC = () => {
   const sendInvites: React.MouseEventHandler<HTMLButtonElement> = () => {
     if (!members.length) return;
 
-    // console.log("Sending invites to:", members);
     navigate("/finish"); 
   };
 

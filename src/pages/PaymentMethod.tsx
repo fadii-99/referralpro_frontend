@@ -151,7 +151,11 @@ const PaymentMethod: React.FC = () => {
         });
 
         const data = await res.json();
-        console.log('Getting data from signup success', data);
+
+         if (res.status === 502 || res.status === 503 || res.status === 504) {
+            toast.error("Server is busy, please try again.");
+            return;
+          }
 
         if (!res.ok) {
           const msg =
@@ -403,10 +407,12 @@ const PaymentMethod: React.FC = () => {
             </p>
 
             <Button
-              text={submitting ? "Processing..." : "Save & Continue"}
+              text="Save & Continue"
               onClick={onSave}
-              disabled={submitting}
+              loading={submitting}    
+              disabled={submitting}   
             />
+
 
             <p className="mt-2 text-center text-[11px] text-gray-500">
               Terms of Service | Privacy Policy

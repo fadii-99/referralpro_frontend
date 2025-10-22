@@ -61,6 +61,11 @@ const CreatePassword: React.FC = () => {
         body: fd,
       });
 
+        if (res.status === 429 || res.status === 502 || res.status === 503) {
+      toast.error("Server is busy, please try again.");
+      return;
+    }
+
       // parse JSON or text safely
       const ct = res.headers.get("content-type") || "";
       let data: any = null;
