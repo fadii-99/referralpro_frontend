@@ -25,10 +25,10 @@ const Login: React.FC = () => {
   }, []);
 
   const [form, setForm] = useState<LoginForm>({
-    email: localStorage.getItem("rememberEmail") || "",
+    email:  "",
     password: "",
   });
-  const [rememberMe, setRememberMe] = useState<boolean>(!!localStorage.getItem("rememberEmail"));
+
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -89,13 +89,6 @@ const Login: React.FC = () => {
        if (json?.tokens?.access) {
           localStorage.setItem("accessToken", json.tokens.access);
         }
-
-
-        if (rememberMe && form.email.trim()) {
-        localStorage.setItem("rememberEmail", form.email.trim());
-      } else {
-        localStorage.removeItem("rememberEmail");
-      }
 
       navigate("/Dashboard");
     } catch (err) {
@@ -175,8 +168,8 @@ const Login: React.FC = () => {
             </div>
 
             {/* Remember me + Forgot password */}
-            <div className="flex items-center justify-between mt-1">
-              <label className="flex items-center gap-2 text-xs text-primary-blue">
+            <div className="flex items-center justify-end mt-1">
+              {/* <label className="flex items-center gap-2 text-xs text-primary-blue">
                 <input
                   type="checkbox"
                   checked={rememberMe}
@@ -184,7 +177,7 @@ const Login: React.FC = () => {
                   className="h-4 w-4 rounded border-gray-300 text-primary-purple focus:ring-primary-purple checked:bg-primary-purple checked:border-primary-purple"
                 />
                 <span>Remember me</span>
-              </label>
+              </label> */}
 
               <Link
                 to="/ForgetPassword"
