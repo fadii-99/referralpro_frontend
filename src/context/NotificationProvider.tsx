@@ -63,7 +63,7 @@ function getHttpBase(): string {
 function buildWsUrl(userId: string | number, token: string): string {
   const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
   const host = window.location.host;
-  let url = `${proto}//${host}/ws/notifications/${userId}/`;
+  let url = `${proto}//${host}/api/ws/notifications/${userId}/`;
   if (token) url += `?token=${encodeURIComponent(token)}`;
   return url;
 }

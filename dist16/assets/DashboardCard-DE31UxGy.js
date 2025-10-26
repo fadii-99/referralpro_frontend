@@ -1,1 +1,0 @@
-import{j as s}from"./index-CeKQ7924.js";const x=({title:t,value:e})=>s.jsxs("div",{className:"bg-primary-blue text-white rounded-2xl sm:p-4 p-3 shadow-md relative",children:[s.jsx("h4",{className:"sm:text-sm text-xs",children:t}),s.jsx("p",{className:"sm:text-3xl text-2xl font-bold mt-2",children:e})]});export{x as D};
