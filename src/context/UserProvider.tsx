@@ -1,3 +1,4 @@
+// src/context/UserProvider.tsx
 import React, {
   createContext,
   useCallback,
@@ -45,9 +46,16 @@ export const useUserContext = () => {
 
 const serverUrl = import.meta.env.VITE_SERVER_URL;
 
-export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
+// hard redirect (works even if provider is outside any Router)
+const redirectToRoot = () => {
+  try {
+    localStorage.clear();
+  } catch {}
+  // replace so user can't go "Back" into a broken authed state
+  window.location.replace("/");
+};
+
+export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<UserInfo | null>(null);
@@ -58,19 +66,28 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
 
     try {
       const token = localStorage.getItem("accessToken");
-      if (!token) return;
+      if (!token) {
+        setLoading(false);
+        return;
+      }
 
       const res = await fetch(`${serverUrl}/auth/get_user/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: token ? `Bearer ${token}` : "",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({}),
       });
 
+      if (res.status === 401) {
+        setUser(null);
+        setError("Unauthorized");
+        redirectToRoot();
+        return;
+      }
+
       const data = await res.json();
-      console.log("[UserProvider] get_user response:", data);
 
       if (!res.ok) {
         setError(`Failed (${res.status})`);
@@ -78,21 +95,15 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
         return;
       }
 
-    // Function to generate initials from name
-const makeAvatarUrl = (fullName: string) => {
-  const parts = fullName.trim().split(" ");
-  let initials = "";
-  if (parts.length >= 2) {
-    initials = `${parts[0][0]}${parts[1][0]}`; // first letters of first + last
-  } else if (parts.length === 1) {
-    initials = parts[0][0]; // just first letter
-  } else {
-    initials = "U"; // fallback
-  }
-
-  return `https://ui-avatars.com/api/?name=${initials.toUpperCase()}&background=E5E7EB&color=374151`;
-};
-
+      // Function to generate initials from name
+      const makeAvatarUrl = (fullName: string) => {
+        const parts = (fullName || "").trim().split(" ").filter(Boolean);
+        let initials = "";
+        if (parts.length >= 2) initials = `${parts[0][0]}${parts[1][0]}`;
+        else if (parts.length === 1) initials = parts[0][0];
+        else initials = "U";
+        return `https://ui-avatars.com/api/?name=${initials.toUpperCase()}&background=E5E7EB&color=374151`;
+      };
 
       // ✅ Merge user + business_info
       const mapped: UserInfo = {
@@ -101,8 +112,7 @@ const makeAvatarUrl = (fullName: string) => {
         email: data?.user?.email || "",
         phone: data?.user?.phone || "",
         role: data?.user?.role || "Member",
-        avatar: data?.user?.image || makeAvatarUrl(data?.user?.full_name),
-
+        avatar: data?.user?.image || makeAvatarUrl(data?.user?.full_name || "User"),
 
         company_name: data?.user?.business_info?.company_name || "",
         address1: data?.user?.business_info?.address1 || "",
@@ -116,7 +126,7 @@ const makeAvatarUrl = (fullName: string) => {
         biz_type: data?.user?.business_info?.biz_type || "",
       };
 
-      localStorage.setItem('userId', mapped.id);
+      localStorage.setItem("userId", mapped.id);
       localStorage.setItem("userBizType", (mapped.biz_type || "").trim().toLowerCase());
 
       setUser(mapped);
@@ -133,10 +143,7 @@ const makeAvatarUrl = (fullName: string) => {
     void loadUser();
   }, [loadUser]);
 
-  const value = useMemo(
-    () => ({ loading, error, user, loadUser }),
-    [loading, error, user, loadUser]
-  );
+  const value = useMemo(() => ({ loading, error, user, loadUser }), [loading, error, user, loadUser]);
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
 };

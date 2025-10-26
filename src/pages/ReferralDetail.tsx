@@ -60,7 +60,7 @@ const ReferralDetail: React.FC = () => {
     const live = (user?.biz_type || "").trim().toLowerCase();
     return live || cachedBizType;
   }, [user?.biz_type, cachedBizType]);
-  const isSole = /^(sole|sole\s*trader|solo|sole_trader)$/i.test(effectiveBizType);
+  const isSole = /^(sole|sole\s*trader|solo)$/i.test(effectiveBizType);
 
   // ----- STATUS Custom Dropdown (BusinessRegistration-style)
   const statusTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -70,7 +70,7 @@ const ReferralDetail: React.FC = () => {
   const [statusHighlighted, setStatusHighlighted] = useState<number>(-1);
 
   const statusOptions = useMemo<string[]>(
-    () => (isSole ? ["completed", "cancelled"] : ["Accept", "Reject"]),
+    () => (isSole ? ["completed", "cancelled"] : ["accept", "reject"]),
     [isSole]
   );
 
@@ -128,9 +128,9 @@ const ReferralDetail: React.FC = () => {
     }
   };
 
+  // ------- FETCHES -------
   const fetchDetail = useCallback(async () => {
     const token = localStorage.getItem("accessToken");
-    const referralId = localStorage.getItem("selectedReferralId");
     try {
       setLoadingDetail(true);
       const res = await fetch(`${serverUrl}/refer/list_company_referral/`, {
@@ -139,7 +139,7 @@ const ReferralDetail: React.FC = () => {
           "Content-Type": "application/json",
           Authorization: token ? `Bearer ${token}` : "",
         },
-        body: JSON.stringify({ referral_id: referralId }),
+        body: JSON.stringify({ referral_id: localStorage.getItem("selectedReferralId") }),
       });
       const data = await res.json();
       const detailData = Array.isArray(data.referrals) ? data.referrals[0] : null;
@@ -181,6 +181,7 @@ const ReferralDetail: React.FC = () => {
     fetchActivity();
   }, []);
 
+  // ---------- ACTION HANDLER ----------
   const handleStatusUpdate = async () => {
     if (!detail) return;
     if (!status) {
@@ -202,7 +203,7 @@ const ReferralDetail: React.FC = () => {
           },
           body: JSON.stringify({
             referral_id: detail.id,
-            status, // "Complete" | "Cancel"
+            status, // "completed" | "cancelled"
           }),
         });
 
@@ -212,13 +213,12 @@ const ReferralDetail: React.FC = () => {
           return;
         }
 
-        const response = await res.json();
+        await res.json();
         toast.success("✅ Status updated successfully!");
-        console.log("Sole status update response:", response);
         await fetchDetail();
       } else {
-        // Non-sole: Accept requires employee; Reject doesn't; note included
-        if (status !== "Reject" && !selectedEmployee) {
+        // Non-sole: accept requires employee; reject doesn't; note included
+        if (status !== "reject" && !selectedEmployee) {
           toast.error("⚠️ Please select an employee before proceeding.");
           setSubmitting(false);
           return;
@@ -232,8 +232,8 @@ const ReferralDetail: React.FC = () => {
           },
           body: JSON.stringify({
             referral_id: detail.id,
-            status, // "Accept" | "Reject"
-            employee_id: status === "Reject" ? null : selectedEmployee?.id,
+            status, // "accept" | "reject"
+            employee_id: status === "reject" ? null : selectedEmployee?.id,
             note: note || "",
           }),
         });
@@ -244,10 +244,9 @@ const ReferralDetail: React.FC = () => {
           return;
         }
 
-        const response = await res.json();
+        await res.json();
         toast.success("✅ Status updated successfully!");
-        console.log("Assign/Status update response:", response);
-        await fetchDetail();
+        await fetchDetail(); // brings back assigned_to_id/name etc.
       }
     } catch {
       toast.error("Network error, please try again");
@@ -264,30 +263,88 @@ const ReferralDetail: React.FC = () => {
     );
   }
 
-  // Terminal if detail.status is Complete/Cancel (global)
-  const terminalStatus = ["completed", "cancelled"].includes((detail.status || "").toLowerCase());
+  // ====== NEW GATING LOGIC (as requested) ======
+  const normalizedStatus = (detail.status || "").trim().toLowerCase();
+  const isPending = normalizedStatus === "pending";
+  const isFriendOptedIn = normalizedStatus === "friend opted in";
 
-  // In sole: hide status card when terminal; always hide assignment for sole
-  const showStatusCard =
-    !isSole && !terminalStatus // non-sole + not terminal
-      ? true
-      : isSole && !terminalStatus // sole but not terminal (still needs Complete/Cancel)
-      ? true
-      : false;
+  // When "Friend opted in": allow actions; When "pending": disable both.
+  const canInteract = isFriendOptedIn; // single source of truth
 
-  // Disable rule:
+  // Terminal if detail.status is completed/cancelled (global)
+  const terminalStatus = ["completed", "cancelled"].includes(normalizedStatus);
+
+  // ===== Visibility rules (unchanged except terminal) =====
+  // Non-sole: after assignment, both Assignment selector and Status Update card should HIDE.
+  const showAssignmentSelector = !isSole && !detail.assigned_to_id && !terminalStatus;
+  // Show Status Update: for sole -> until terminal; for non-sole -> until terminal & not yet assigned
+  const showStatusCard = isSole ? !terminalStatus : !terminalStatus && !detail.assigned_to_id;
+
+  // Disable rule (existing) + new gate (canInteract)
   const disableSubmit = isSole
-    ? submitting || !status
-    : submitting || !status || (status !== "Reject" && !selectedEmployee);
+    ? submitting || !status || !canInteract
+    : submitting || !status || (status !== "reject" && !selectedEmployee) || !canInteract;
 
-    // helper (place it near top inside the component file)
-const statusBadgeClass = (raw?: string) => {
-  const s = (raw || "").toLowerCase();
-  if (s === "completed") return "text-emerald-600 bg-emerald-50";
-  if (s === "cancelled") return "text-blue-600 bg-blue-50";
-  return "text-amber-600 bg-amber-50";
-};
+  // ---- Helpers
+  const statusBadgeClass = (raw?: string) => {
+    const s = (raw || "").toLowerCase();
+    if (s === "completed") return "text-emerald-600 bg-emerald-50";
+    if (s === "cancelled") return "text-rose-600 bg-rose-50";
+    return "text-amber-600 bg-amber-50";
+  };
 
+  const AssignmentInfoCard: React.FC = () => {
+    if (isSole) return null; // sole me yeh card ki zarurat nahi
+    if (!detail.assigned_to_id && !detail.assigned_to_name) return null;
+
+    const assignedWhen = detail.assigned_at || "";
+    const assignedName = detail.assigned_to_name || "";
+    const assignedNotes = detail.assigned_notes || "";
+
+    const display = (v: string) => (v && v.trim().length ? v : "—");
+
+    return (
+      <div className="bg-white rounded-xl sm:rounded-2xl shadow-sm border border-black/5 p-4 sm:p-6 h-full">
+        <h3 className="text-base sm:text-lg font-semibold text-primary-blue mb-4">
+          Assignment Info
+        </h3>
+
+        <div className="flex items-start justify-between gap-4 pt-2">
+          {/* Left: Avatar + Details */}
+          <div className="flex items-start gap-3">
+            <div className="h-9 w-9 rounded-full bg-black flex items-center justify-center">
+              <span className="text-white text-sm font-semibold">
+                {getInitial(assignedName || "U")}
+              </span>
+            </div>
+
+            <div className="flex flex-col">
+              {/* Name pill */}
+              <span className="inline-flex items-center w-fit px-3 py-1 rounded-lg text-xs sm:text-sm font-medium capitalize text-blue-700 bg-blue-50">
+                {display(assignedName)}
+              </span>
+
+              {/* Labeled lines */}
+              <div className="mt-2 space-y-1 text-xs text-gray-600 pt-2">
+                <p>
+                  <span className="font-semibold text-gray-700">Assigned To:</span>{" "}
+                  {display(assignedName)}
+                </p>
+                <p>
+                  <span className="font-semibold text-gray-700">Assigned At:</span>{" "}
+                  {display(assignedWhen)}
+                </p>
+                <p>
+                  <span className="font-semibold text-gray-700">Assigned Notes:</span>{" "}
+                  {display(assignedNotes)}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="p-4 sm:p-6 flex flex-col min-h-screen space-y-6">
@@ -306,13 +363,12 @@ const statusBadgeClass = (raw?: string) => {
         <div className="text-left sm:text-right mt-3 sm:mt-0 flex flex-col items-start sm:items-end">
           <p className="text-xs text-gray-500">{detail.date}</p>
           <span
-  className={`inline-flex items-center px-2 sm:px-3 py-1 rounded-lg text-xs font-medium mt-2 ${statusBadgeClass(
-    detail.status
-  )}`}
->
-  {detail.status}
-</span>
-
+            className={`inline-flex items-center px-2 sm:px-3 py-1 rounded-lg text-xs font-medium mt-2 ${statusBadgeClass(
+              detail.status
+            )}`}
+          >
+            {detail.status}
+          </span>
         </div>
       </div>
 
@@ -336,17 +392,13 @@ const statusBadgeClass = (raw?: string) => {
               </p>
               <p className="text-xs text-gray-600 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 pb-2">
                 <span
-                  className={`flex items-center gap-1 ${
-                    detail.privacy ? "blur-sm select-none" : ""
-                  }`}
+                  className={`flex items-center gap-1 ${detail.privacy ? "blur-sm select-none" : ""}`}
                 >
                   <HiMail className="text-gray-500 text-sm" />
                   {detail.referred_to_email}
                 </span>
                 <span
-                  className={`flex items-center gap-1 ${
-                    detail.privacy ? "blur-sm select-none" : ""
-                  }`}
+                  className={`flex items-center gap-1 ${detail.privacy ? "blur-sm select-none" : ""}`}
                 >
                   <HiPhone className="text-gray-500" />
                   {detail.referred_to_phone}
@@ -368,6 +420,8 @@ const statusBadgeClass = (raw?: string) => {
                     ? "text-rose-500 bg-rose-50"
                     : (detail.urgency || "").toLowerCase() === "normal"
                     ? "text-blue-500 bg-blue-50"
+                    : (detail.urgency || "").toLowerCase() === "low"
+                    ? "text-amber-500 bg-amber-50"
                     : "text-slate-500 bg-slate-50"
                 }`}
             >
@@ -378,32 +432,36 @@ const statusBadgeClass = (raw?: string) => {
       </div>
 
       {/* ===== Layout section ===== */}
-      {/* When terminal: activity becomes full-width; rest stays as usual */}
       {!terminalStatus ? (
-        // ---------- NORMAL (non-terminal) LAYOUT: grid ----------
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-          {/* Assignment (non-sole only & not assigned) */}
-          {!isSole && !detail.assigned_to_id && (
+          {/* Assignment selector (non-sole only & not assigned) */}
+          {showAssignmentSelector && (
             <div className="bg-white rounded-xl sm:rounded-2xl shadow-sm border border-black/5 p-4 sm:p-6">
-              <h3 className="text-base sm:text-lg font-semibold text-primary-blue mb-4">
+              <h3 className="text-base sm:text-lg font-semibold text-primary-blue mb-2">
                 Assignment
               </h3>
+              {isPending && (
+                <p className="text-[11px] sm:text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-md px-2 py-1 mb-3">
+                  Employee can be selected only after the friend opts in. While pending, it isn’t allowed
+                </p>
+              )}
               <div className="relative">
                 <button
-                  onClick={() => setEmpDropdownOpen((v) => !v)}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm sm:text-base text-left focus:outline-none focus:ring-2 focus:ring-primary-purple flex justify-between items-center"
+                  onClick={() => canInteract && setEmpDropdownOpen((v) => !v)}
+                  disabled={!canInteract}
+                  className={`w-full border border-gray-200 rounded-xl px-3 py-2 text-sm sm:text-base text-left focus:outline-none
+                    ${canInteract ? "focus:ring-2 focus:ring-primary-purple" : "opacity-60 cursor-not-allowed"}
+                    flex justify-between items-center`}
                 >
                   {selectedEmployee ? selectedEmployee.name : "Select Employee"}
                   <HiChevronDown className="text-gray-400" />
                 </button>
-                {empDropdownOpen && (
+                {empDropdownOpen && canInteract && (
                   <div className="absolute z-20 mt-2 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
                     {teamLoading ? (
                       <div className="p-4 text-center text-gray-500 text-sm">Loading...</div>
                     ) : membersFromApi.length === 0 ? (
-                      <div className="p-4 text-center text-gray-500 text-sm">
-                        No team members found
-                      </div>
+                      <div className="p-4 text-center text-gray-500 text-sm">No team members found</div>
                     ) : (
                       membersFromApi.map((member) => (
                         <div
@@ -437,9 +495,7 @@ const statusBadgeClass = (raw?: string) => {
                     </span>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-primary-blue">
-                      {selectedEmployee.name}
-                    </p>
+                    <p className="text-sm font-medium text-primary-blue">{selectedEmployee.name}</p>
                     <p className="text-xs text-gray-500">{selectedEmployee.email}</p>
                   </div>
                 </div>
@@ -448,31 +504,45 @@ const statusBadgeClass = (raw?: string) => {
             </div>
           )}
 
-          {/* Status Update (custom dropdown) */}
+          {/* ✅ After assignment (non-sole): show read-only Assignment Info card; selector + status hidden */}
+          {!isSole && detail.assigned_to_id && (
+            <div className="lg:col-span-1">
+              <AssignmentInfoCard />
+            </div>
+          )}
+
+          {/* Status Update (hide after assignment for non-sole) */}
           {showStatusCard && (
             <div
               className={`bg-white rounded-xl sm:rounded-2xl shadow-sm border border-black/5 p-4 sm:p-6 ${
                 isSole && !detail.assigned_to_id ? "lg:col-span-2" : ""
               }`}
             >
-              <h3 className="text-base sm:text-lg font-semibold text-primary-blue mb-4">
+              <h3 className="text-base sm:text-lg font-semibold text-primary-blue mb-2">
                 Status Update
               </h3>
+              {/* Note for gating */}
+              {!canInteract && (
+                <p className="text-[11px] sm:text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-md px-2 py-1 mb-3">
+                  Status can be selected only after the friend opts in. While pending, it isn’t allowed
+                </p>
+              )}
 
-              {/* Trigger */}
               <div className="relative" ref={statusPanelRef}>
                 <button
                   ref={statusTriggerRef}
                   type="button"
                   onClick={() => {
+                    if (!canInteract) return;
                     setStatusOpen((s) => !s);
                     setTimeout(() => setStatusHighlighted(0), 0);
                   }}
                   onKeyDown={onStatusTriggerKeyDown}
                   aria-haspopup="listbox"
                   aria-expanded={statusOpen}
-                  className="group w-full px-4 pr-10 py-3 rounded-xl bg-white border border-gray-200 text-left
-                             text-sm text-gray-800 outline-none focus:ring-2 focus:ring-primary-purple relative"
+                  disabled={!canInteract}
+                  className={`group w-full px-4 pr-10 py-3 rounded-xl bg-white border border-gray-200 text-left
+                             text-sm text-gray-800 outline-none ${canInteract ? "focus:ring-2 focus:ring-primary-purple" : "opacity-60 cursor-not-allowed"} relative`}
                 >
                   {status || "Select status"}
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition-transform">
@@ -489,8 +559,7 @@ const statusBadgeClass = (raw?: string) => {
                   </span>
                 </button>
 
-                {/* Flyout list */}
-                {statusOpen && (
+                {statusOpen && canInteract && (
                   <div className="absolute z-30 mt-2 w-full bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden">
                     <ul
                       ref={statusListRef}
@@ -524,7 +593,7 @@ const statusBadgeClass = (raw?: string) => {
                                 isActive ? "bg-primary-purple/10" : "hover:bg-primary-purple/10",
                               ].join(" ")}
                             >
-                              <span className="text-sm text-primary-blue">{opt}</span>
+                              <span className="text-sm text-primary-blue capitalize">{opt}</span>
                               {isSelected && (
                                 <span className="ml-auto text-primary-purple text-sm">✓</span>
                               )}
@@ -545,7 +614,10 @@ const statusBadgeClass = (raw?: string) => {
                     placeholder="Write here..."
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
-                    className="w-full mt-2 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-purple"
+                    disabled={!canInteract}
+                    className={`w-full mt-2 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none ${
+                      canInteract ? "focus:ring-2 focus:ring-primary-purple" : "opacity-60 cursor-not-allowed"
+                    }`}
                     rows={4}
                   />
                 </>
@@ -599,11 +671,12 @@ const statusBadgeClass = (raw?: string) => {
           </div>
         </div>
       ) : (
-        // ---------- TERMINAL LAYOUT: Activity full-width ----------
+        // ---------- TERMINAL LAYOUT ----------
         <>
-          {/* Non-sole & unassigned: you may still show assignment/status if you want.
-              Per your last instruction, only Activity goes full width; others remain as-is.
-              For sole, status card is already hidden. */}
+          {/* Assigned summary still visible in terminal */}
+          {!isSole && (detail.assigned_to_id || detail.assigned_to_name) && (
+            <AssignmentInfoCard />
+          )}
 
           {/* Full width Activity Log */}
           <div className="bg-white rounded-xl sm:rounded-2xl shadow-sm border border-black/5 p-4 sm:p-6">

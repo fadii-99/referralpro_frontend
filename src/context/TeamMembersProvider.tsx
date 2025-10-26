@@ -1,3 +1,4 @@
+// src/context/TeamMembersProvider.tsx
 import React, {
   createContext,
   useCallback,
@@ -7,7 +8,6 @@ import React, {
   useEffect,
 } from "react";
 // import { toast } from "react-toastify";
-
 
 export type TeamMember = {
   id: string;
@@ -19,7 +19,6 @@ export type TeamMember = {
   lastActive: string;
   phone?: string;
 };
-
 
 type Ctx = {
   loading: boolean;
@@ -41,6 +40,14 @@ export const useTeamMembersContext = () => {
 
 const serverUrl = import.meta.env.VITE_SERVER_URL;
 
+// Router-agnostic 401 redirect
+const redirectToRoot = () => {
+  try {
+    localStorage.clear();
+  } catch {}
+  window.location.replace("/");
+};
+
 export const TeamMembersProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -48,24 +55,32 @@ export const TeamMembersProvider: React.FC<{ children: React.ReactNode }> = ({
   const [error, setError] = useState<string | null>(null);
   const [membersFromApi, setMembersFromApi] = useState<TeamMember[]>([]);
 
-
-
   const loadTeam = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const token = localStorage.getItem("accessToken");
-      if (!token) return; 
+      if (!token) {
+        setMembersFromApi([]);
+        setLoading(false);
+        return;
+      }
+
       const res = await fetch(`${serverUrl}/auth/employees/`, {
         method: "GET",
         headers: {
           Accept: "application/json",
-          Authorization: token ? `Bearer ${token}` : "",
+          Authorization: `Bearer ${token}`,
         },
       });
 
+      // ⛔ 401 -> clear + hard redirect
+      if (res.status === 401) {
+        setMembersFromApi([]);
+        redirectToRoot();
+        return;
+      }
 
-  
       if (!res.ok) {
         const errTxt = await res.text();
         const msg = `Failed (${res.status}) - ${errTxt || "Unknown error"}`;
@@ -90,10 +105,8 @@ export const TeamMembersProvider: React.FC<{ children: React.ReactNode }> = ({
         phone: emp.phone ?? "—",
       }));
 
-      
       setMembersFromApi(mapped);
-    } catch (err) {
-      // console.error("[employee_list] network error:", err);
+    } catch (err: any) {
       setError("Network error");
       setMembersFromApi([]);
     } finally {

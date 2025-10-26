@@ -31,12 +31,22 @@ const pickColor = (key: string) => {
 };
 
 const StatusPill: React.FC<{ status: string }> = ({ status }) => {
+  // normalize: case-insensitive + treat "_" like space
+  const raw = (status || "").trim();
+  const key = raw.toLowerCase().replace(/_/g, " ").replace(/\s+/g, " ");
+
+  // colors:
+  // in progress => violet, pending => amber, friend opted in => blue
+  // completed => green, cancelled => red, default => gray
   const map: Record<string, string> = {
-    pending: "text-amber-700 bg-amber-50",
-    approved: "text-emerald-700 bg-emerald-50",
-    closed: "text-rose-700 bg-rose-50",
+    "in progress": "text-violet-500 bg-violet-50",
+    pending: "text-amber-500 bg-amber-50",
+    "friend opted in": "text-blue-500 bg-blue-50",
+    completed: "text-emerald-700 bg-emerald-50",
+    cancelled: "text-rose-700 bg-rose-50",
   };
-  const style = map[status.toLowerCase()] || pickColor(status);
+
+  const style = map[key] || "text-gray-700 bg-gray-100";
 
   return (
     <span
@@ -47,13 +57,14 @@ const StatusPill: React.FC<{ status: string }> = ({ status }) => {
   );
 };
 
+
 const UrgencyPill: React.FC<{ urgency: string }> = ({ urgency }) => {
   const map: Record<string, string> = {
     urgent: "text-rose-700 bg-rose-50",
     normal: "text-blue-700 bg-blue-50",
     medium: "text-amber-700 bg-amber-50",
   };
-  const style = map[urgency.toLowerCase()] || pickColor(urgency);
+  const style = map[(urgency || "").toLowerCase()] || pickColor(urgency || "");
 
   return (
     <span
@@ -64,11 +75,41 @@ const UrgencyPill: React.FC<{ urgency: string }> = ({ urgency }) => {
   );
 };
 
+
+
+const AssignedRepPill: React.FC<{ label: string }> = ({ label }) => {
+  const raw = (label || "").trim();
+  const lower = raw.toLowerCase();
+
+  let style = "text-blue-700 bg-blue-50"; // default for normal names (blue)
+  let text = raw || "none";
+
+  if (lower === "self") {
+    // 🔶 make self yellow/amber
+    style = "text-amber-500 bg-amber-50";
+    text = "self";
+  } else if (lower === "none" || raw === "") {
+    style = "text-rose-700 bg-rose-50"; // none = red
+    text = "-";
+  }
+
+  return (
+    <span
+      className={`inline-flex items-center w-fit px-3 py-1 rounded-lg text-nowrap text-xs sm:text-sm font-medium capitalize ${style}`}
+    >
+      {text}
+    </span>
+  );
+};
+
+
 const ReferralRow: React.FC<{
   referral: Referral;
   onClick?: () => void;
   onView?: () => void;
 }> = ({ referral, onClick, onView }) => {
+  const assignedLabel = referral.assigned_to_name || "none";
+
   return (
     <div
       onClick={onClick}
@@ -91,15 +132,9 @@ const ReferralRow: React.FC<{
         {referral.industry}
       </div>
 
-      {/* Assigned Rep */}
+      {/* Assigned Rep → always pill now */}
       <div className="md:text-sm text-xs text-left">
-        {referral.assigned_to_name ? (
-          <span className="text-gray-700">{referral.assigned_to_name}</span>
-        ) : (
-          <span className="inline-flex items-center w-fit px-3 py-1 rounded-lg md:text-sm text-xs font-medium text-red-600 bg-red-50">
-            none
-          </span>
-        )}
+        <AssignedRepPill label={assignedLabel} />
       </div>
 
       {/* Status */}

@@ -1,5 +1,5 @@
 // src/screens/Referral.tsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { FiFilter } from "react-icons/fi";
 import Pagination from "../components/Pagination";
 import ReferralRow from "../components/ReferralRow";
@@ -7,11 +7,19 @@ import type { Referral } from "../components/ReferralRow";
 import { useReferralContext } from "../context/ReferralProvider";
 import SmallLoader from "../components/SmallLoader";
 import { useNavigate } from "react-router-dom";
+import { useUserContext } from "../context/UserProvider";
 
 const Referral: React.FC = () => {
   const { referrals, loading, loadReferrals } = useReferralContext();
   const [page, setPage] = useState(1);
   const navigate = useNavigate();
+
+  // 🔹 Read biz_type from context
+  const { user } = useUserContext();
+  const isSole = useMemo(() => {
+    const raw = (user?.biz_type || "").trim().toLowerCase();
+    return /^(sole|sole\s*trader|solo|sole_trader)$/i.test(raw);
+  }, [user?.biz_type]);
 
   useEffect(() => {
     void loadReferrals();
@@ -39,7 +47,14 @@ const Referral: React.FC = () => {
     navigate(`/Dashboard/Referral/${companySlug}`);
   };
 
-  
+  // 🔸 Only on this page: if sole, force Assigned Rep to "self"
+  const listForRender: Referral[] = useMemo(() => {
+    if (!isSole) return current;
+    return current.map((r) => ({
+      ...r,
+      assigned_to_name: "self",
+    }));
+  }, [current, isSole]);
 
   return (
     <div className="sm:p-6 p-4 flex flex-col min-h-screen">
@@ -57,22 +72,21 @@ const Referral: React.FC = () => {
 
       {/* Table */}
       <div className="flex-1 flex flex-col space-y-4">
-   <div className="overflow-x-auto">
-  <div
-    className="grid grid-cols-[160px_200px_1fr_1fr_1fr_1fr_60px] min-w-[900px]
-               px-6 py-3 text-xs sm:text-sm font-semibold text-gray-600 
-               bg-gray-50 rounded-xl"
-  >
-    <div className="text-left">ID</div>
-    <div className="text-left">Customer Name</div>
-    <div className="text-left">Service Type</div>
-    <div className="text-left">Assigned Rep</div>
-    <div className="text-left">Status</div>
-    <div className="text-left">Priority</div>
-    <div className="text-right pr-2">Actions</div>
-  </div>
-</div>
-
+        <div className="overflow-x-auto">
+          <div
+            className="grid grid-cols-[160px_200px_1fr_1fr_1fr_1fr_60px] min-w-[900px]
+                       px-6 py-3 text-xs sm:text-sm font-semibold text-gray-600 
+                       bg-gray-50 rounded-xl"
+          >
+            <div className="text-left">ID</div>
+            <div className="text-left">Customer Name</div>
+            <div className="text-left">Service Type</div>
+            <div className="text-left">Assigned Rep</div>
+            <div className="text-left">Status</div>
+            <div className="text-left">Priority</div>
+            <div className="text-right pr-2">Actions</div>
+          </div>
+        </div>
 
         {/* Rows */}
         <div className="overflow-x-auto space-y-2">
@@ -80,12 +94,12 @@ const Referral: React.FC = () => {
             <div className="py-6 flex justify-center">
               <SmallLoader />
             </div>
-          ) : current.length === 0 ? (
+          ) : listForRender.length === 0 ? (
             <div className="text-sm p-8 text-center text-gray-500">
               No referrals found.
             </div>
           ) : (
-            current.map((r: Referral) => (
+            listForRender.map((r: Referral) => (
               <ReferralRow
                 key={r.id}
                 referral={r}
@@ -98,7 +112,7 @@ const Referral: React.FC = () => {
       </div>
 
       {/* Pagination */}
-      {current.length > 0 && !loading && (
+      {listForRender.length > 0 && !loading && (
         <div className="mt-auto pt-6 flex justify-end">
           <Pagination
             current={page}

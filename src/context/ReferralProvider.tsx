@@ -7,7 +7,6 @@ import React, {
   useState,
   useEffect,
 } from "react";
-// import { toast } from "react-toastify";
 import type { Referral } from "../components/ReferralRow";
 
 type Ctx = {
@@ -19,7 +18,6 @@ type Ctx = {
 
 const ReferralContext = createContext<Ctx | null>(null);
 
-
 export const useReferralContext = () => {
   const ctx = useContext(ReferralContext);
   if (!ctx) throw new Error("useReferralContext must be used inside provider");
@@ -28,6 +26,13 @@ export const useReferralContext = () => {
 
 const serverUrl = import.meta.env.VITE_SERVER_URL;
 
+// Router-agnostic 401 redirect
+const redirectToRoot = () => {
+  try {
+    localStorage.clear();
+  } catch {}
+  window.location.replace("/");
+};
 
 export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -38,7 +43,11 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const loadReferrals = useCallback(async () => {
     const token = localStorage.getItem("accessToken");
-    if (!token) return;
+    if (!token) {
+      // no token => behave logged-out (don't redirect from here)
+      setReferrals([]);
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -51,6 +60,13 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({
         },
       });
 
+      // ⛔ 401 -> clear + hard redirect
+      if (res.status === 401) {
+        setReferrals([]);
+        redirectToRoot();
+        return;
+      }
+
       if (!res.ok) {
         const errTxt = await res.text();
         const msg = `Error ${res.status}: ${errTxt || res.statusText}`;
@@ -60,21 +76,19 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       const data = await res.json();
-      // console.log(data);
       const arr = Array.isArray(data?.referrals) ? data.referrals : [];
 
       const mapped: Referral[] = arr.map((r: any) => ({
         id: String(r.id),
         reference_id: r.reference_id ?? "",
         referred_to_name: r.referred_to_name ?? "—",
-        industry: r.industry ?? "—", 
+        industry: r.industry ?? "—",
         assigned_to_name: r.assigned_to_name ?? null,
-        status: r.status ?? "—" ,
+        status: r.status ?? "—",
         urgency: r.urgency ?? "—",
       }));
 
       setReferrals(mapped);
-      // console.log('mapped data', mapped );
     } catch (err: any) {
       console.error("[referrals_list] network error:", err);
       const msg = err?.message || "Network error";
