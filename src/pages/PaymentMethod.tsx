@@ -193,7 +193,6 @@ const PaymentMethod: React.FC = () => {
 
 
 
-  const isStripe = registrationData.paymentType === "stripe";
 
   return (
     <div className="grid md:grid-cols-5 w-full min-h-screen">
@@ -400,11 +399,7 @@ const PaymentMethod: React.FC = () => {
               </div>
             </div>
 
-            <p className="text-[11px] text-gray-500 text-center">
-              {isStripe
-                ? "Payments secured by Stripe"
-                : "Bank transfer will be processed manually"}
-            </p>
+           
 
             <Button
               text="Save & Continue"
@@ -413,10 +408,7 @@ const PaymentMethod: React.FC = () => {
               disabled={submitting}   
             />
 
-
-            <p className="mt-2 text-center text-[11px] text-gray-500">
-              Terms of Service | Privacy Policy
-            </p>
+           
           </div>
         </div>
       </div>

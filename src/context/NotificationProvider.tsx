@@ -59,6 +59,8 @@ function getHttpBase(): string {
   return (window.location.origin + "/" + raw.replace(/^\/+/, "")).replace(/\/+$/, "");
 }
 
+
+
 /** Build WS URL for /ws/notifications/:userId/ and append token as query */
 function buildWsUrl(userId: string | number, token: string): string {
   const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -67,6 +69,8 @@ function buildWsUrl(userId: string | number, token: string): string {
   if (token) url += `?token=${encodeURIComponent(token)}`;
   return url;
 }
+
+
 
 /** Normalize server payload into minimal shape */
 function normalizePayload(p: any): SimpleNotification {

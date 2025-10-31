@@ -91,7 +91,7 @@ const SubscriptionPlan: React.FC = () => {
   const [selectedPlanId, setSelectedPlanId] = useState<0 | 1 | 3 | null>(
     registrationData.subscriptionPlanId
   );
-  const [paymentType] = useState<"stripe">("stripe");
+  // const [paymentType] = useState<"stripe">("stripe");
 
   // 🔽 Custom plan state
   const [customSeats, setCustomSeats] = useState<number>(
@@ -405,7 +405,7 @@ const SubscriptionPlan: React.FC = () => {
             )}
 
             {/* Payment type */}
-            <div className="mt-6">
+            {/* <div className="mt-6">
               <div className="text-xs text-primary-blue font-semibold mb-2">
                 Payment method
               </div>
@@ -421,7 +421,7 @@ const SubscriptionPlan: React.FC = () => {
                   </div>
                 </div>
               </div>
-            </div>
+            </div> */}
 
             {/* Selection Summary */}
             <div className="mt-6">
@@ -456,10 +456,10 @@ const SubscriptionPlan: React.FC = () => {
                     : PLAN_META.growth.baseSeats}
                 </div>
 
-                <div className="text-primary-blue/80">Payment</div>
+                {/* <div className="text-primary-blue/80">Payment</div>
                 <div className="text-right text-primary-blue font-semibold">
                   {paymentType}
-                </div>
+                </div> */}
 
                 <div className="text-primary-blue/80">Amount</div>
                 <div className="text-right text-primary-blue font-semibold">
